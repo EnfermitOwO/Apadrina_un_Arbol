@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+
 // O usando import relativo:
 import 'views/catalogo.dart';
  // apartado de catalogo
