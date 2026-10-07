@@ -80,7 +80,7 @@ class _ArbolesApadrinadosViewState extends State<ArbolesApadrinadosView> {
           children: [
             const SizedBox(height: 10),
 
-            // Campo de búsqueda personalizado
+            //hola
            // Campo de búsqueda
             Container(
               decoration: BoxDecoration(
