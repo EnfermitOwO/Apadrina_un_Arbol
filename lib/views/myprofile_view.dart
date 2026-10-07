@@ -6,7 +6,7 @@ import '../widgets/custom_bottom_nav.dart';
 import '../models/post_model.dart';
 
 class MyProfileView extends StatefulWidget {
-  const MyProfileView({super.key});
+  const MyProfileView({Key? key}) : super(key: key);
 
   @override
   State<MyProfileView> createState() => _MyProfileViewState();
@@ -17,8 +17,7 @@ class _MyProfileViewState extends State<MyProfileView> {
 
   File? _profileImage;
   File? _bannerImage;
- 
-  // Datos del usuario editables
+
   String _username = 'Usuario';
   String _bio = 'Sin Descripción';
 
@@ -32,14 +31,15 @@ class _MyProfileViewState extends State<MyProfileView> {
     return null;
   }
 
-  // Modal para editar foto de perfil, portada, nombre y descripción
   void _showEditProfileModal() {
     final TextEditingController nameController = TextEditingController(text: _username);
     final TextEditingController bioController = TextEditingController(text: _bio);
+    final theme = Theme.of(context);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -55,34 +55,49 @@ class _MyProfileViewState extends State<MyProfileView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Editar Perfil',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF556B2F),
+                    color: theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(height: 15),
                 TextField(
                   controller: nameController,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Nombre de usuario',
+                    labelStyle: TextStyle(color: theme.colorScheme.primary),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: theme.colorScheme.primary),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: bioController,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Descripción / Biografía',
+                    labelStyle: TextStyle(color: theme.colorScheme.primary),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: theme.colorScheme.primary),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
                 const SizedBox(height: 10),
                 ListTile(
-                  leading: const Icon(Icons.image, color: Color(0xFF556B2F)),
-                  title: const Text('Cambiar foto de portada'),
+                  leading: Icon(Icons.image, color: theme.colorScheme.primary),
+                  title: Text(
+                    'Cambiar foto de portada',
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
                   onTap: () async {
                     final img = await _pickImage();
                     if (img != null) {
@@ -91,8 +106,11 @@ class _MyProfileViewState extends State<MyProfileView> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.account_circle, color: Color(0xFF556B2F)),
-                  title: const Text('Cambiar foto de perfil'),
+                  leading: Icon(Icons.account_circle, color: theme.colorScheme.primary),
+                  title: Text(
+                    'Cambiar foto de perfil',
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
                   onTap: () async {
                     final img = await _pickImage();
                     if (img != null) {
@@ -103,7 +121,7 @@ class _MyProfileViewState extends State<MyProfileView> {
                 const SizedBox(height: 10),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF556B2F),
+                    backgroundColor: theme.colorScheme.primary,
                     minimumSize: const Size(double.infinity, 45),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -126,10 +144,10 @@ class _MyProfileViewState extends State<MyProfileView> {
     );
   }
 
-  // Modal para crear nueva publicación (foto opcional)
   void _showCreatePostModal() {
     File? selectedPostImage;
     final TextEditingController commentController = TextEditingController();
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
@@ -137,10 +155,11 @@ class _MyProfileViewState extends State<MyProfileView> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              backgroundColor: theme.scaffoldBackgroundColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              title: const Text(
+              title: Text(
                 'Nueva Publicación',
-                style: TextStyle(color: Color(0xFF556B2F), fontWeight: FontWeight.bold),
+                style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -159,7 +178,7 @@ class _MyProfileViewState extends State<MyProfileView> {
                         height: 140,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
+                          color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: Colors.grey.shade300),
                           image: selectedPostImage != null
@@ -172,10 +191,10 @@ class _MyProfileViewState extends State<MyProfileView> {
                         child: selectedPostImage == null
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(Icons.add_a_photo, size: 36, color: Color(0xFF556B2F)),
-                                  SizedBox(height: 5),
-                                  Text(
+                                children: [
+                                  Icon(Icons.add_a_photo, size: 36, color: theme.colorScheme.primary),
+                                  const SizedBox(height: 5),
+                                  const Text(
                                     'Seleccionar Foto (Opcional)',
                                     style: TextStyle(color: Colors.grey, fontSize: 13),
                                   ),
@@ -207,10 +226,11 @@ class _MyProfileViewState extends State<MyProfileView> {
                     TextField(
                       controller: commentController,
                       maxLines: 3,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: 'Escribe un comentario...',
                         focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Color(0xFF556B2F)),
+                          borderSide: BorderSide(color: theme.colorScheme.primary),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         border: OutlineInputBorder(
@@ -228,12 +248,11 @@ class _MyProfileViewState extends State<MyProfileView> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF556B2F),
+                    backgroundColor: theme.colorScheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: () {
                     final text = commentController.text.trim();
-                    // Permite publicar si hay texto O si hay foto seleccionada
                     if (text.isNotEmpty || selectedPostImage != null) {
                       setState(() {
                         _posts.insert(
@@ -259,14 +278,15 @@ class _MyProfileViewState extends State<MyProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    const Color colorVerde = Color(0xFF556B2F);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Stack original con bordes redondeados, botón flotante y foto alineada a la izquierda
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -278,7 +298,7 @@ class _MyProfileViewState extends State<MyProfileView> {
                       bottomLeft: Radius.circular(20),
                       bottomRight: Radius.circular(20),
                     ),
-                    color: Colors.grey.shade300,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                     image: _bannerImage != null
                         ? DecorationImage(image: FileImage(_bannerImage!), fit: BoxFit.cover)
                         : null,
@@ -288,9 +308,9 @@ class _MyProfileViewState extends State<MyProfileView> {
                   top: 40,
                   left: 15,
                   child: CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.7),
+                    backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.8),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: colorVerde),
+                      icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -300,16 +320,16 @@ class _MyProfileViewState extends State<MyProfileView> {
                   left: 20,
                   child: Container(
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: theme.scaffoldBackgroundColor,
                       shape: BoxShape.circle,
                     ),
                     child: CircleAvatar(
                       radius: 40,
-                      backgroundColor: Colors.grey.shade300,
+                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
                       backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
                       child: _profileImage == null
-                          ? const Icon(Icons.person, size: 45, color: Colors.white)
+                          ? Icon(Icons.person, size: 45, color: theme.colorScheme.primary)
                           : null,
                     ),
                   ),
@@ -317,25 +337,33 @@ class _MyProfileViewState extends State<MyProfileView> {
               ],
             ),
             const SizedBox(height: 45),
+            // Información del usuario (Alineado a la izquierda como en tu captura)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _username,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorVerde),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _bio,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _showEditProfileModal,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorVerde,
+                      backgroundColor: theme.colorScheme.primary,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
@@ -345,15 +373,17 @@ class _MyProfileViewState extends State<MyProfileView> {
                 ],
               ),
             ),
-            const Divider(height: 30, thickness: 1),
+            const SizedBox(height: 10),
+            // Botón de publicar centrado
             Center(
               child: IconButton(
                 iconSize: 52,
-                icon: const Icon(Icons.add_circle, color: colorVerde),
+                icon: Icon(Icons.add_circle, color: theme.colorScheme.primary),
                 onPressed: _showCreatePostModal,
               ),
             ),
             const SizedBox(height: 10),
+            // Publicaciones
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -369,16 +399,19 @@ class _MyProfileViewState extends State<MyProfileView> {
                         children: [
                           CircleAvatar(
                             radius: 16,
-                            backgroundColor: Colors.grey.shade300,
+                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
                             backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
                             child: _profileImage == null
-                                ? const Icon(Icons.person, size: 20, color: Colors.white)
+                                ? Icon(Icons.person, size: 20, color: theme.colorScheme.primary)
                                 : null,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _username,
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: colorVerde),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -386,7 +419,10 @@ class _MyProfileViewState extends State<MyProfileView> {
                       if (post.comment.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Text(post.comment, style: const TextStyle(fontSize: 14)),
+                          child: Text(
+                            post.comment,
+                            style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
+                          ),
                         ),
                       if (post.image != null)
                         ClipRRect(
@@ -400,18 +436,18 @@ class _MyProfileViewState extends State<MyProfileView> {
                         ),
                       const SizedBox(height: 8),
                       Row(
-                        children: const [
-                          Icon(Icons.favorite, color: colorVerde, size: 20),
-                          SizedBox(width: 4),
-                          Text('0', style: TextStyle(color: colorVerde)),
-                          SizedBox(width: 20),
-                          Icon(Icons.chat_bubble_outline, color: colorVerde, size: 20),
-                          SizedBox(width: 4),
-                          Text('0', style: TextStyle(color: colorVerde)),
-                          SizedBox(width: 20),
-                          Icon(Icons.reply, color: colorVerde, size: 20),
-                          SizedBox(width: 4),
-                          Text('0', style: TextStyle(color: colorVerde)),
+                        children: [
+                          Icon(Icons.favorite, color: theme.colorScheme.primary, size: 20),
+                          const SizedBox(width: 4),
+                          Text('0', style: TextStyle(color: theme.colorScheme.primary)),
+                          const SizedBox(width: 20),
+                          Icon(Icons.chat_bubble_outline, color: theme.colorScheme.primary, size: 20),
+                          const SizedBox(width: 4),
+                          Text('0', style: TextStyle(color: theme.colorScheme.primary)),
+                          const SizedBox(width: 20),
+                          Icon(Icons.reply, color: theme.colorScheme.primary, size: 20),
+                          const SizedBox(width: 4),
+                          Text('0', style: TextStyle(color: theme.colorScheme.primary)),
                         ],
                       ),
                     ],
