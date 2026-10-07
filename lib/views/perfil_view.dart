@@ -1,38 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:apadrina_un_arbol/views/myprofile_view.dart';
+import '../widgets/theme_provider.dart';// Asegúrate de que esta ruta apunte a tu theme_provider.dart
+import '../views/arboles_apadrinados.view.dart'; // O ajusta la ruta según la estructura de tu proyecto
 
-class PerfilView extends StatefulWidget {
+class PerfilView extends StatelessWidget {
   const PerfilView({super.key});
 
   @override
-  State<PerfilView> createState() => _PerfilViewState();
-}
-
-class _PerfilViewState extends State<PerfilView> {
-  // Estado del modo oscuro
-  bool isDarkMode = false;
-
-  @override
   Widget build(BuildContext context) {
-    // Definimos los colores dinámicos según si está activo el modo oscuro
-    final Color colorFondo = isDarkMode ? const Color.fromARGB(255, 49, 47, 47) : Colors.white;
-    final Color colorTextoEIconos = isDarkMode ? const Color.fromARGB(255, 153, 240, 153) : const Color(0xFF556B2F);
+    // Obtenemos el proveedor del tema e información del tema actual
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: colorFondo,  
       appBar: AppBar(
-        backgroundColor: colorFondo,
-        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: colorTextoEIconos, size: 28),
+          icon: const Icon(Icons.arrow_back, size: 28),
           onPressed: () {
             Navigator.of(context).maybePop();
           },
         ),
-        title: Text(
+        title: const Text(
           'Perfil',
           style: TextStyle(
-            color: colorTextoEIconos,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -42,28 +33,38 @@ class _PerfilViewState extends State<PerfilView> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 16.0),
         children: [
-        _buildOptionTile(
+          _buildOptionTile(
+            context: context,
             icon: Icons.person_outline,
             title: 'Mi cuenta',
-            color: colorTextoEIconos,
             onTap: () {
-              // NAVEGACIÓN A LA SECCIÓN DE PERFIL DETALLADO
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const MyProfileView(), // Con M y P mayúsculas
+                  builder: (context) => const MyProfileView(),
                 ),
               );
             },
           ),
-                  
-          
+          _buildOptionTile(
+  context: context,
+  icon: Icons.park_outlined, // Puedes cambiar el icono según corresponda
+  title: 'Mis árboles apadrinados',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ArbolesApadrinadosView(),
+      ),
+    );
+  },
+),
           const SizedBox(height: 28),
           
           Text(
             'Ajustes generales',
             style: TextStyle(
-              color: colorTextoEIconos,
+              color: theme.colorScheme.primary,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -71,54 +72,52 @@ class _PerfilViewState extends State<PerfilView> {
           const SizedBox(height: 12),
           
           _buildOptionTile(
+            context: context,
             icon: Icons.error_outline,
             title: 'Configuración',
-            color: colorTextoEIconos,
             onTap: () {},
           ),
           _buildOptionTile(
+            context: context,
             icon: Icons.help_outline,
             title: 'Acerca de nosotros',
-            color: colorTextoEIconos,
             onTap: () {},
           ),
           _buildOptionTile(
+            context: context,
             icon: Icons.share_outlined,
             title: 'Compartir aplicación',
-            color: colorTextoEIconos,
             onTap: () {},
           ),
           
           const SizedBox(height: 12),
           
-          // Switch de Modo Dark & Light
+          // Switch de Modo Dark & Light conectado al ThemeProvider global
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(
               Icons.brightness_6_outlined,
-              color: colorTextoEIconos,
+              color: theme.colorScheme.primary,
               size: 24,
             ),
             title: Text(
               'Modo\nDark & Light',
               style: TextStyle(
-                color: colorTextoEIconos,
+                color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
                 height: 1.1,
               ),
             ),
             trailing: Switch(
-              value: isDarkMode,
-              activeThumbColor: colorTextoEIconos,
-              activeTrackColor: colorTextoEIconos.withValues(alpha: 0.4),
+              value: themeProvider.isDarkMode,
+              activeThumbColor: theme.colorScheme.primary,
+              activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.4),
               inactiveThumbColor: Colors.grey.shade400,
               inactiveTrackColor: Colors.grey.shade300,
               onChanged: (bool value) {
-                // Al presionar el botón, actualizamos el estado y la pantalla cambia de color
-                setState(() {
-                  isDarkMode = value;
-                });
+                // Modifica el estado globalmente y lo guarda localmente
+                themeProvider.toggleTheme(value);
               },
             ),
           ),
@@ -128,22 +127,24 @@ class _PerfilViewState extends State<PerfilView> {
   }
 
   Widget _buildOptionTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
-    required Color color,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         icon,
-        color: color,
+        color: theme.colorScheme.primary,
         size: 24,
       ),
       title: Text(
         title,
         style: TextStyle(
-          color: color,
+          color: theme.colorScheme.primary,
           fontWeight: FontWeight.w600,
           fontSize: 15,
         ),
