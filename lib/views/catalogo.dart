@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-// Importamos la pantalla principal (main.dart) y el menú reutilizable
+// Importamos la pantalla principal (main.dart) y los widgets reutilizables
 import '../main.dart';
+import '../widgets/custom_header.dart';
 import '../widgets/custom_bottom_nav.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'detail_view.dart'; // Asegúrate de que la ruta coincida con la ubicación de tu archivo
-
-
+import 'detail_view.dart';
 
 class CatalogoScreen extends StatefulWidget {
   const CatalogoScreen({super.key});
@@ -20,10 +18,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   final Color verdePrincipal = const Color(0xFF5D8736);
   final Color verdeClaroFondo = const Color(0xFFEEF7E8);
 
-  // =========================================================================
-  // 📌 AQUÍ IRÁ TU BASE DE DATOS EN EL FUTURO:
-  // Por ahora es una lista local (hardcoded).
-  // =========================================================================
+  // 📌 CONTROLADOR Y LISTA FILTRADA PARA LA BÚSQUEDA
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, String>> _arbolesFiltrados = [];
+
+  // 📌 BASE DE DATOS LOCAL DE ÁRBOLES
   final List<Map<String, String>> arboles = [
     {
       'nombre': 'Duraznillo',
@@ -47,38 +46,63 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       'nombre': 'Árbol Orquídea',
       'altura': 'Altura 4m - 10m',
       'epoca': 'Época: Verano',
-      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSBvaFXmVWVQbO4fTsj7oSWlGLgDdBAj2rVGGJB50aWIHjLyYjs3kQyB6ry&s=10  ',
+      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSBvaFXmVWVQbO4fTsj7oSWlGLgDdBAj2rVGGJB50aWIHjLyYjs3kQyB6ry&s=10',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Al iniciar, la lista filtrada contiene todos los árboles
+    _arbolesFiltrados = arboles;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // 📌 FUNCIÓN PARA FILTRAR ÁRBOLES
+  void _filtrarArboles(String texto) {
+    setState(() {
+      if (texto.isEmpty) {
+        _arbolesFiltrados = arboles;
+      } else {
+        _arbolesFiltrados = arboles
+            .where((arbol) => arbol['nombre']!
+                .toLowerCase()
+                .contains(texto.toLowerCase()))
+            .toList();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 0.0, bottom: 10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 8),
-              _buildSearchBar(),
-              const SizedBox(height: 12),
-              _buildBanner(),
-              const SizedBox(height: 16),
-              _buildGridArboles(),
-            ],
-          ),
+      
+      appBar: const CustomHeader(),
+      
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSearchBar(),
+            const SizedBox(height: 12),
+            _buildBanner(),
+            const SizedBox(height: 16),
+            _buildGridArboles(),
+          ],
         ),
       ),
 
-      // 📌 AQUÍ USAMOS TU CUSTOMBOTTOMNAV Y REDIRIGE A MAIN (HOMEPAGE)
       bottomNavigationBar: CustomBottomNav(
-        currentIndex: 1, // 1 representa el Catálogo
+        currentIndex: 1,
         onTap: (index) {
           if (index == 0) {
-            // Te regresa a Inicio (HomePage en main.dart)
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const HomePage()),
@@ -91,63 +115,23 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 
-  // Header superior
-Widget _buildHeader() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // 1. Avatar a la izquierda
-        const CircleAvatar(
-          radius: 18,
-          backgroundImage: AssetImage('assets/images/arbol ekisde.jpg'),
-        ),
-
-        // 2. Icono de árbol + Texto centrado
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.park, // o Icons.forest
-              color:  Color(0xFF3B6B23),
-              size: 22,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Apadrina un árbol',
-              style: GoogleFonts.poppins(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3B6B23),
-              ),
-            ),
-          ],
-        ),
-
-        // 3. Campana de notificaciones a la derecha
-        IconButton(
-          constraints: const BoxConstraints(),
-          padding: EdgeInsets.zero,
-          icon: Icon(
-            Icons.notifications,
-            color:  Color(0xFF3B6B23),
-            size: 22,
-          ),
-          onPressed: () {},
-        ),
-      ],
-    ),
-  );
-}
-  // Barra de búsqueda
+  // 📌 BARRA DE BÚSQUEDA FUNCIONAL
   Widget _buildSearchBar() {
     return TextField(
-      onChanged: (texto) {},
+      controller: _searchController,
+      onChanged: _filtrarArboles, // Filtra conforme escribes
       decoration: InputDecoration(
         hintText: 'Busca tu árbol',
         hintStyle: TextStyle(color: Colors.grey[600]),
-        suffixIcon: Icon(Icons.search, color: verdePrincipal),
+        suffixIcon: _searchController.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  _searchController.clear();
+                  _filtrarArboles('');
+                },
+              )
+            : Icon(Icons.search, color: verdePrincipal),
         filled: true,
         fillColor: verdeClaroFondo,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -200,6 +184,7 @@ Widget _buildHeader() {
                     height: 1.2,
                   ),
                 ),
+                
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {},
@@ -215,7 +200,7 @@ Widget _buildHeader() {
                     'Adoptar',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
+                ),  
               ],
             ),
           ),
@@ -224,8 +209,20 @@ Widget _buildHeader() {
     );
   }
 
-  // Grid de árboles ajustado y compacto
+  // 📌 GRID DE ÁRBOLES ACTUALIZADO CON LOS RESULTADOS FILTRADOS
   Widget _buildGridArboles() {
+    if (_arbolesFiltrados.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 30.0),
+          child: Text(
+            'No se encontraron árboles.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
@@ -235,9 +232,9 @@ Widget _buildHeader() {
         crossAxisSpacing: 12,
         mainAxisSpacing: 16,
       ),
-      itemCount: arboles.length,
+      itemCount: _arbolesFiltrados.length,
       itemBuilder: (context, index) {
-        final item = arboles[index];
+        final item = _arbolesFiltrados[index];
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -293,41 +290,39 @@ Widget _buildHeader() {
                 ],
               ),
               const SizedBox(height: 8),
-            // Busca esta sección dentro de _buildGridArboles():
-SizedBox(
-  width: double.infinity,
-  height: 32,
-  child: ElevatedButton(
-    onPressed: () {
-      // 📌 AQUÍ SE HACE LA CONEXIÓN:
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const DetalleArbolScreen(),
-        ),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      backgroundColor: verdePrincipal,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      padding: EdgeInsets.zero,
-    ),
-    child: const Text(
-      'Ver más',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ),
-),
+              SizedBox(
+                width: double.infinity,
+                height: 32,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DetalleArbolScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: verdePrincipal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: const Text(
+                    'Ver más',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );
       },
     );
   }
-}
+} 

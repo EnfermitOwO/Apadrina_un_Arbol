@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 // Importación de componentes personalizados del proyecto
 import '../widgets/custom_header.dart';
 import '../widgets/custom_bottom_nav.dart';
-import '../widgets/custom_text_field.dart';
+
 
 class SponsoredTree {
   final String name;
@@ -19,7 +19,7 @@ class SponsoredTree {
 }
 
 class ArbolesApadrinadosView extends StatefulWidget {
-  const ArbolesApadrinadosView({Key? key}) : super(key: key);
+  const ArbolesApadrinadosView({super.key});
 
   @override
   State<ArbolesApadrinadosView> createState() => _ArbolesApadrinadosViewState();
@@ -195,6 +195,7 @@ class _ArbolesApadrinadosViewState extends State<ArbolesApadrinadosView> {
                                   ),
                                 ],
                               ),
+                              
                               const SizedBox(height: 10),
                               SizedBox(
                                 height: 32,
@@ -210,6 +211,7 @@ class _ArbolesApadrinadosViewState extends State<ArbolesApadrinadosView> {
                                     ),
                                     padding: const EdgeInsets.symmetric(horizontal: 14),
                                   ),
+                                
                                   child: Text(
                                     'Ver certificado',
                                     style: GoogleFonts.poppins(

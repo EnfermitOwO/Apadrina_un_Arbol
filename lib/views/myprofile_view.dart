@@ -6,7 +6,7 @@ import '../widgets/custom_bottom_nav.dart';
 import '../models/post_model.dart';
 
 class MyProfileView extends StatefulWidget {
-  const MyProfileView({Key? key}) : super(key: key);
+  const MyProfileView({super.key});
 
   @override
   State<MyProfileView> createState() => _MyProfileViewState();

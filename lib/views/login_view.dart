@@ -5,6 +5,9 @@ import 'register_view.dart';
 import 'novedades_view.dart';
 import '/widgets/header.dart';
 import '/widgets/custom_text_field.dart';
+import '../providers/auth_provider.dart';
+import 'package:provider/provider.dart';
+import '../services/biometric_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -119,41 +122,79 @@ class LoginView extends StatelessWidget {
                   // ==========================================
                   // BOTÓN INICIAR SESIÓN
                   // ==========================================
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
+                 // ==========================================
+// BOTÓN INICIAR SESIÓN
+// ==========================================
+SizedBox(
+  width: double.infinity,
+  height: 55,
+  child: ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFF558B2F),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 0,
+    ),
+    onPressed: () {
+      // Activamos la sesión con el Provider
+      Provider.of<AuthProvider>(context, listen: false).login();
 
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF558B2F),
+      // Navegamos a la siguiente vista
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NovedadesView(),
+        ),
+      );
+    },
+    child: Text(
+      'Iniciar sesión',
+      style: GoogleFonts.poppins(
+        fontSize: 18,
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  ),
+),
+// Botón de Biometría (Huella / Face ID)
+IconButton(
+  iconSize: 45,
+  icon: const Icon(
+    Icons.fingerprint, // O Icons.face si prefieres
+    color: Color(0xFF558B2F),
+  ),
+  onPressed: () async {
+    bool canAuth = await BiometricService.isBiometricAvailable();
+    
+    if (!canAuth) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu dispositivo no cuenta con autenticación biométrica activa'),
+        ),
+      );
+      return;
+    }
 
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+    bool authenticated = await BiometricService.authenticate();
 
-                        elevation: 0,
-                      ),
+    if (authenticated && context.mounted) {
+      // 1. Iniciamos sesión en nuestro Provider
+      Provider.of<AuthProvider>(context, listen: false).login();
 
-                      onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NovedadesView(),
-                            ),
-                          );
+      // 2. Navegamos a la vista principal
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NovedadesView(),
+        ),
+      );
+    }
+  },
+),
 
-                      },
-                            
-                      child: Text(
-                        'Iniciar sesión',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
+
 
                   const SizedBox(height: 25),
 
