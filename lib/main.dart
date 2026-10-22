@@ -6,11 +6,15 @@ import 'widgets/custom_header.dart';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/welcome_section.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'providers/auth_provider.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()), // <-- ¡Agregado aquí!
+      ],
       child: const MyApp(),
     ),
   );

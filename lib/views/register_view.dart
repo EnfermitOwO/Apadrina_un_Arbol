@@ -1,11 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '/widgets/header.dart';
 import '/widgets/custom_text_field.dart';
+import '../providers/auth_provider.dart';
+import '../services/biometric_service.dart'; // Importamos el servicio biométrico
+import 'novedades_view.dart';
 
 class RegisterView extends StatelessWidget {
   const RegisterView({super.key});
+
+  // Método auxiliar para autenticar e iniciar sesión
+  Future<void> _handleBiometricRegister(BuildContext context) async {
+    bool canAuth = await BiometricService.isBiometricAvailable();
+
+    if (!canAuth) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tu dispositivo no cuenta con autenticación biométrica activa.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    bool authenticated = await BiometricService.authenticate();
+
+    if (authenticated && context.mounted) {
+      // Guardamos sesión en el Provider
+      Provider.of<AuthProvider>(context, listen: false).login();
+
+      // Navegamos limpiando la pila de pantallas
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NovedadesView(),
+        ),
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +131,19 @@ class RegisterView extends StatelessWidget {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        // 1. Inicia sesión en Provider
+                        Provider.of<AuthProvider>(context, listen: false).login();
+
+                        // 2. Navega a NovedadesView limpiando la navegación
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NovedadesView(),
+                          ),
+                          (route) => false,
+                        );
+                      },
                       child: Text(
                         'Registrarme',
                         style: GoogleFonts.poppins(
@@ -107,7 +155,34 @@ class RegisterView extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 20),
+
+                  // ==========================================
+                  // OPCIÓN BIOMÉTRICA (HUELLA / FACE ID)
+                  // ==========================================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'O regístrate rápidamente con:',
+                        style: GoogleFonts.poppins(
+                          color: Colors.black54,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        iconSize: 36,
+                        icon: const Icon(
+                          Icons.fingerprint, // Se adapta automáticamente a Face ID / Huella
+                          color: Color(0xFF33691E),
+                        ),
+                        onPressed: () => _handleBiometricRegister(context),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
 
                   // ==========================================
                   // REGRESAR AL LOGIN
