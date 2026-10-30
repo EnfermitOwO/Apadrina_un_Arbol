@@ -1,9 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../widgets/custom_bottom_nav.dart';
 import '../models/post_model.dart';
+import '../services/cloudinary_service.dart';
+import '../providers/auth_provider.dart';
 
 class MyProfileView extends StatefulWidget {
   const MyProfileView({super.key});
@@ -13,28 +14,41 @@ class MyProfileView extends StatefulWidget {
 }
 
 class _MyProfileViewState extends State<MyProfileView> {
-  final ImagePicker _picker = ImagePicker();
-
-  File? _profileImage;
-  File? _bannerImage;
-
   String _username = 'Usuario';
   String _bio = 'Sin Descripción';
+  String? _profileImageUrl;
+  String? _bannerImageUrl;
 
   final List<Post> _posts = [];
 
-  Future<File?> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      return File(image.path);
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatosUsuario();
+  }
+
+  /// Carga los datos iniciales desde el AuthProvider (MongoDB)
+  void _cargarDatosUsuario() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+
+    if (user != null) {
+      setState(() {
+        _username = user['nombre_usuario'] ?? 'Usuario';
+        _bio = user['bio'] ?? 'Sin Descripción';
+        _profileImageUrl = user['foto_perfil'];
+        _bannerImageUrl = user['foto_portada'];
+      });
     }
-    return null;
   }
 
   void _showEditProfileModal() {
     final TextEditingController nameController = TextEditingController(text: _username);
     final TextEditingController bioController = TextEditingController(text: _bio);
     final theme = Theme.of(context);
+
+    String? tempProfileUrl = _profileImageUrl;
+    String? tempBannerUrl = _bannerImageUrl;
 
     showModalBottomSheet(
       context: context,
@@ -44,108 +58,130 @@ class _MyProfileViewState extends State<MyProfileView> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Editar Perfil',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: nameController,
-                  style: TextStyle(color: theme.colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'Nombre de usuario',
-                    labelStyle: TextStyle(color: theme.colorScheme.primary),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.colorScheme.primary),
-                      borderRadius: BorderRadius.circular(10),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Editar Perfil',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: bioController,
-                  style: TextStyle(color: theme.colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'Descripción / Biografía',
-                    labelStyle: TextStyle(color: theme.colorScheme.primary),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: theme.colorScheme.primary),
-                      borderRadius: BorderRadius.circular(10),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                      decoration: InputDecoration(
+                        labelText: 'Nombre de usuario',
+                        labelStyle: TextStyle(color: theme.colorScheme.primary),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: theme.colorScheme.primary),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: Icon(Icons.image, color: theme.colorScheme.primary),
-                  title: Text(
-                    'Cambiar foto de portada',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                  onTap: () async {
-                    final img = await _pickImage();
-                    if (img != null) {
-                      setState(() => _bannerImage = img);
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.account_circle, color: theme.colorScheme.primary),
-                  title: Text(
-                    'Cambiar foto de perfil',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                  onTap: () async {
-                    final img = await _pickImage();
-                    if (img != null) {
-                      setState(() => _profileImage = img);
-                    }
-                  },
-                ),
-                const SizedBox(height: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    minimumSize: const Size(double.infinity, 45),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: bioController,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                      decoration: InputDecoration(
+                        labelText: 'Descripción / Biografía',
+                        labelStyle: TextStyle(color: theme.colorScheme.primary),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: theme.colorScheme.primary),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _username = nameController.text.trim();
-                      _bio = bioController.text.trim();
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Guardar Cambios', style: TextStyle(color: Colors.white)),
+                    const SizedBox(height: 10),
+                    ListTile(
+                      leading: Icon(Icons.image, color: theme.colorScheme.primary),
+                      title: Text(
+                        'Cambiar foto de portada',
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                      ),
+                      onTap: () async {
+                        // Sube la foto directamente a Cloudinary y obtiene la URL
+                        final url = await CloudinaryService.subirImagenDesdeGaleria(esPerfil: false);
+                        if (url != null) {
+                          setModalState(() => tempBannerUrl = url);
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.account_circle, color: theme.colorScheme.primary),
+                      title: Text(
+                        'Cambiar foto de perfil',
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                      ),
+                      onTap: () async {
+                        // Sube la foto directamente a Cloudinary y obtiene la URL
+                        final url = await CloudinaryService.subirImagenDesdeGaleria(esPerfil: true);
+                        if (url != null) {
+                          setModalState(() => tempProfileUrl = url);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        minimumSize: const Size(double.infinity, 45),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final nuevoNombre = nameController.text.trim();
+                        final nuevaBio = bioController.text.trim();
+
+                        // Guardar en MongoDB a través del AuthProvider
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        await authProvider.actualizarPerfil(
+                          nombreUsuarioActual: _username,
+                          nuevoNombre: nuevoNombre,
+                          nuevaBio: nuevaBio,
+                          fotoPerfilUrl: tempProfileUrl,
+                          fotoPortadaUrl: tempBannerUrl,
+                        );
+
+                        setState(() {
+                          _username = nuevoNombre;
+                          _bio = nuevaBio;
+                          _profileImageUrl = tempProfileUrl;
+                          _bannerImageUrl = tempBannerUrl;
+                        });
+
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: const Text('Guardar Cambios', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
   void _showCreatePostModal() {
-    File? selectedPostImage;
+    String? selectedPostImageUrl;
     final TextEditingController commentController = TextEditingController();
     final theme = Theme.of(context);
 
@@ -167,10 +203,10 @@ class _MyProfileViewState extends State<MyProfileView> {
                   children: [
                     GestureDetector(
                       onTap: () async {
-                        final img = await _pickImage();
-                        if (img != null) {
+                        final url = await CloudinaryService.subirImagenDesdeGaleria(esPerfil: false);
+                        if (url != null) {
                           setModalState(() {
-                            selectedPostImage = img;
+                            selectedPostImageUrl = url;
                           });
                         }
                       },
@@ -181,14 +217,14 @@ class _MyProfileViewState extends State<MyProfileView> {
                           color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: Colors.grey.shade300),
-                          image: selectedPostImage != null
+                          image: selectedPostImageUrl != null
                               ? DecorationImage(
-                                  image: FileImage(selectedPostImage!),
+                                  image: NetworkImage(selectedPostImageUrl!),
                                   fit: BoxFit.cover,
                                 )
                               : null,
                         ),
-                        child: selectedPostImage == null
+                        child: selectedPostImageUrl == null
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -208,7 +244,7 @@ class _MyProfileViewState extends State<MyProfileView> {
                                     child: GestureDetector(
                                       onTap: () {
                                         setModalState(() {
-                                          selectedPostImage = null;
+                                          selectedPostImageUrl = null;
                                         });
                                       },
                                       child: const CircleAvatar(
@@ -253,15 +289,9 @@ class _MyProfileViewState extends State<MyProfileView> {
                   ),
                   onPressed: () {
                     final text = commentController.text.trim();
-                    if (text.isNotEmpty || selectedPostImage != null) {
+                    if (text.isNotEmpty || selectedPostImageUrl != null) {
                       setState(() {
-                        _posts.insert(
-                          0,
-                          Post(
-                            image: selectedPostImage,
-                            comment: text,
-                          ),
-                        );
+                        // _posts.insert(0, Post(...));
                       });
                       Navigator.pop(context);
                     }
@@ -286,7 +316,6 @@ class _MyProfileViewState extends State<MyProfileView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Stack original con bordes redondeados, botón flotante y foto alineada a la izquierda
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -299,8 +328,8 @@ class _MyProfileViewState extends State<MyProfileView> {
                       bottomRight: Radius.circular(20),
                     ),
                     color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                    image: _bannerImage != null
-                        ? DecorationImage(image: FileImage(_bannerImage!), fit: BoxFit.cover)
+                    image: _bannerImageUrl != null && _bannerImageUrl!.isNotEmpty
+                        ? DecorationImage(image: NetworkImage(_bannerImageUrl!), fit: BoxFit.cover)
                         : null,
                   ),
                 ),
@@ -327,8 +356,10 @@ class _MyProfileViewState extends State<MyProfileView> {
                     child: CircleAvatar(
                       radius: 40,
                       backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-                      backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                      child: _profileImage == null
+                      backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                          ? NetworkImage(_profileImageUrl!)
+                          : null,
+                      child: _profileImageUrl == null || _profileImageUrl!.isEmpty
                           ? Icon(Icons.person, size: 45, color: theme.colorScheme.primary)
                           : null,
                     ),
@@ -337,7 +368,6 @@ class _MyProfileViewState extends State<MyProfileView> {
               ],
             ),
             const SizedBox(height: 45),
-            // Información del usuario (Alineado a la izquierda como en tu captura)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
@@ -374,7 +404,6 @@ class _MyProfileViewState extends State<MyProfileView> {
               ),
             ),
             const SizedBox(height: 10),
-            // Botón de publicar centrado
             Center(
               child: IconButton(
                 iconSize: 52,
@@ -383,76 +412,12 @@ class _MyProfileViewState extends State<MyProfileView> {
               ),
             ),
             const SizedBox(height: 10),
-            // Publicaciones
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _posts.length,
               itemBuilder: (context, index) {
-                final post = _posts[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-                            backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                            child: _profileImage == null
-                                ? Icon(Icons.person, size: 20, color: theme.colorScheme.primary)
-                                : null,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _username,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (post.comment.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Text(
-                            post.comment,
-                            style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
-                          ),
-                        ),
-                      if (post.image != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            post.image!,
-                            width: double.infinity,
-                            height: 220,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.favorite, color: theme.colorScheme.primary, size: 20),
-                          const SizedBox(width: 4),
-                          Text('0', style: TextStyle(color: theme.colorScheme.primary)),
-                          const SizedBox(width: 20),
-                          Icon(Icons.chat_bubble_outline, color: theme.colorScheme.primary, size: 20),
-                          const SizedBox(width: 4),
-                          Text('0', style: TextStyle(color: theme.colorScheme.primary)),
-                          const SizedBox(width: 20),
-                          Icon(Icons.reply, color: theme.colorScheme.primary, size: 20),
-                          const SizedBox(width: 4),
-                          Text('0', style: TextStyle(color: theme.colorScheme.primary)),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
+                return const SizedBox.shrink();
               },
             ),
             const SizedBox(height: 20),

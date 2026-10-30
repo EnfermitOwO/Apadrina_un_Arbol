@@ -5,15 +5,26 @@ import 'views/catalogo.dart';
 import 'widgets/custom_header.dart';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/welcome_section.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart'; 
 import 'providers/auth_provider.dart';
+import 'mongodb/mongo_service.dart';
 
-void main() {
+void main() async {
+  // Asegura que los bindings de Flutter estén listos para ejecutar código asíncrono
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa la conexión global a MongoDB Atlas antes de arrancar la app
+  try {
+    await MongoService.connect();
+  } catch (e) {
+    debugPrint("Error inicializando MongoDB en main: $e");
+  }
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()), // <-- ¡Agregado aquí!
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: const MyApp(),
     ),
@@ -74,7 +85,7 @@ class _HomePageState extends State<HomePage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // <--- CAMBIO DINÁMICO
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -102,7 +113,7 @@ class _HomePageState extends State<HomePage> {
 
               // PUNTITOS
               Row(
-               mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.circle, size: 8, color: Colors.grey),
                   const SizedBox(width: 6),
@@ -123,7 +134,7 @@ class _HomePageState extends State<HomePage> {
                     style: GoogleFonts.poppins(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.primary, // <--- CAMBIO DINÁMICO
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                 ),
@@ -243,7 +254,7 @@ Widget actionCard(BuildContext context, IconData icon, String texto) {
     width: 100,
     height: 90,
     decoration: BoxDecoration(
-      color: theme.colorScheme.surface, // <--- CAMBIO DINÁMICO
+      color: theme.colorScheme.surface,
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
@@ -254,7 +265,7 @@ Widget actionCard(BuildContext context, IconData icon, String texto) {
       ],
     ),
     child: Column(
-   mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, color: theme.colorScheme.primary, size: 30),
         const SizedBox(height: 6),
@@ -263,7 +274,7 @@ Widget actionCard(BuildContext context, IconData icon, String texto) {
           style: GoogleFonts.poppins(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: theme.colorScheme.onSurface, // <--- CAMBIO DINÁMICO
+            color: theme.colorScheme.onSurface,
           ),
         ),
       ],

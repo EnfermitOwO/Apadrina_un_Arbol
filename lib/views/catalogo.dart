@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-// Importamos la pantalla principal (main.dart) y los widgets reutilizables
+// Importamos la pantalla principal (main.dart), widgets y el servicio de MongoDB
 import '../main.dart';
 import '../widgets/custom_header.dart';
 import '../widgets/custom_bottom_nav.dart';
+import '../mongodb/mongo_service.dart';
 import 'detail_view.dart';
 
 class CatalogoScreen extends StatefulWidget {
@@ -18,43 +19,16 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   final Color verdePrincipal = const Color(0xFF5D8736);
   final Color verdeClaroFondo = const Color(0xFFEEF7E8);
 
-  // 📌 CONTROLADOR Y LISTA FILTRADA PARA LA BÚSQUEDA
+  // CONTROLADOR Y LISTAS PARA LA BÚSQUEDA Y MONGODB
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, String>> _arbolesFiltrados = [];
-
-  // 📌 BASE DE DATOS LOCAL DE ÁRBOLES
-  final List<Map<String, String>> arboles = [
-    {
-      'nombre': 'Duraznillo',
-      'altura': 'Altura 6m - 15m',
-      'epoca': 'Época: Primavera',
-      'imagen': 'https://upload.wikimedia.org/wikipedia/commons/0/00/Solanum_glaucophyllum_1.jpg?utm_source=es.wikipedia.org&utm_campaign=index&utm_content=original',
-    },
-    {
-      'nombre': 'Bignonia amarilla',
-      'altura': 'Altura 6m - 15m',
-      'epoca': 'Época: Primavera',
-      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTbKXdHkc4lM6wChGSw4KGsqM5Ti6G5Az0_Yd88Yona0EnqoDVB8fhWqNc&s=10',
-    },
-    {
-      'nombre': 'Guayacán Blanco',
-      'altura': 'Altura 5m - 12m',
-      'epoca': 'Época: Primavera',
-      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrGOgqRoImzxIlPme1IyYj7Y_ySKd9v5nrS4-jJxb3mhPHmCW--KmMJPqK&s=10',
-    },
-    {
-      'nombre': 'Árbol Orquídea',
-      'altura': 'Altura 4m - 10m',
-      'epoca': 'Época: Verano',
-      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSBvaFXmVWVQbO4fTsj7oSWlGLgDdBAj2rVGGJB50aWIHjLyYjs3kQyB6ry&s=10',
-    },
-  ];
+  List<Map<String, dynamic>> _allArboles = [];
+  List<Map<String, dynamic>> _arbolesFiltrados = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Al iniciar, la lista filtrada contiene todos los árboles
-    _arbolesFiltrados = arboles;
+    _cargarArbolesDesdeMongo();
   }
 
   @override
@@ -63,17 +37,37 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     super.dispose();
   }
 
-  // 📌 FUNCIÓN PARA FILTRAR ÁRBOLES
+  /// Carga los datos dinámicos desde la colección 'arboles' en MongoDB Atlas
+  Future<void> _cargarArbolesDesdeMongo() async {
+    try {
+      final coleccion = MongoService.getCollection('arboles');
+      final resultados = await coleccion.find().toList();
+
+      setState(() {
+        _allArboles = resultados;
+        _arbolesFiltrados = resultados;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error al cargar árboles desde MongoDB: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // FUNCIÓN PARA FILTRAR ÁRBOLES EN TIEMPO REAL
   void _filtrarArboles(String texto) {
     setState(() {
       if (texto.isEmpty) {
-        _arbolesFiltrados = arboles;
+        _arbolesFiltrados = _allArboles;
       } else {
-        _arbolesFiltrados = arboles
-            .where((arbol) => arbol['nombre']!
-                .toLowerCase()
-                .contains(texto.toLowerCase()))
-            .toList();
+        _arbolesFiltrados = _allArboles.where((arbol) {
+          final nombreComun = (arbol['nombre_comun'] ?? '').toString().toLowerCase();
+          final nombreCientifico = (arbol['nombre_cientifico'] ?? '').toString().toLowerCase();
+          final query = texto.toLowerCase();
+          return nombreComun.contains(query) || nombreCientifico.contains(query);
+        }).toList();
       }
     });
   }
@@ -82,9 +76,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      
       appBar: const CustomHeader(),
-      
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
         child: Column(
@@ -94,11 +86,17 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             const SizedBox(height: 12),
             _buildBanner(),
             const SizedBox(height: 16),
-            _buildGridArboles(),
+            _isLoading
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40.0),
+                      child: CircularProgressIndicator(color: verdePrincipal),
+                    ),
+                  )
+                : _buildGridArboles(),
           ],
         ),
       ),
-
       bottomNavigationBar: CustomBottomNav(
         currentIndex: 1,
         onTap: (index) {
@@ -115,7 +113,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 
-  // 📌 BARRA DE BÚSQUEDA FUNCIONAL
+  // BARRA DE BÚSQUEDA FUNCIONAL
   Widget _buildSearchBar() {
     return TextField(
       controller: _searchController,
@@ -184,7 +182,6 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                     height: 1.2,
                   ),
                 ),
-                
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {},
@@ -200,7 +197,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                     'Adoptar',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),  
+                ),
               ],
             ),
           ),
@@ -209,7 +206,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 
-  // 📌 GRID DE ÁRBOLES ACTUALIZADO CON LOS RESULTADOS FILTRADOS
+  // GRID DE ÁRBOLES ACTUALIZADO CON DATOS REALES DE MONGODB
   Widget _buildGridArboles() {
     if (_arbolesFiltrados.isEmpty) {
       return const Center(
@@ -228,95 +225,124 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       shrinkWrap: true,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.82,
+        childAspectRatio: 0.72, // Proporción ajustada para evitar desbordes visuales
         crossAxisSpacing: 12,
         mainAxisSpacing: 16,
       ),
       itemCount: _arbolesFiltrados.length,
       itemBuilder: (context, index) {
         final item = _arbolesFiltrados[index];
+
+        final String nombre = item['nombre_comun'] ?? 'Sin Nombre';
+        final String altura = item['altura'] != null ? 'Altura ${item['altura']}' : 'Altura N/D';
+        final String epoca = item['epoca'] != null ? 'Época: ${item['epoca']}' : 'Época: N/D';
+        final String imagenUrl = item['imagen'] ?? '';
+
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
                 child: Image.network(
-                  item['imagen']!,
-                  height: 100,
+                  imagenUrl,
+                  height: 105,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 105,
+                    color: Colors.grey.shade200,
+                    child: Icon(Icons.image_not_supported, color: Colors.grey.shade400),
+                  ),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                item['nombre']!,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.straighten, size: 14, color: verdePrincipal),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      item['altura']!,
-                      style: const TextStyle(fontSize: 11, color: Colors.black87),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(Icons.eco, size: 14, color: verdePrincipal),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      item['epoca']!,
-                      style: const TextStyle(fontSize: 11, color: Colors.black87),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 32,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DetalleArbolScreen(),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nombre,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: verdePrincipal,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    padding: EdgeInsets.zero,
-                  ),
-                  child: const Text(
-                    'Ver más',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.straighten, size: 14, color: verdePrincipal),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            altura,
+                            style: const TextStyle(fontSize: 11, color: Colors.black87),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.eco, size: 14, color: verdePrincipal),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            epoca,
+                            style: const TextStyle(fontSize: 11, color: Colors.black87),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 32,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DetalleArbolScreen(arbol: item),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: verdePrincipal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Text(
+                          'Ver más',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -325,4 +351,4 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       },
     );
   }
-} 
+}

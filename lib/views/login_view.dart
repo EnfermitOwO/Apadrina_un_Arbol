@@ -20,31 +20,84 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
-      // Tema general de la aplicación
       theme: ThemeData(
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
-
       home: const LoginView(),
     );
   }
 }
 
-class LoginView extends StatelessWidget {
+class LoginView extends StatefulWidget {
   const LoginView({super.key});
+
+  @override
+  State<LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<LoginView> {
+  // Controladores para capturar el texto ingresado
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // Método asíncrono para procesar el Login
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor llena todos los campos'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Llamamos a login pasando los parámetros esperados por AuthProvider
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    bool exito = await authProvider.login(email, password);
+
+    setState(() => _isLoading = false);
+
+    if (exito && mounted) {
+      // Redirigir si la autenticación con MongoDB fue exitosa
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NovedadesView(),
+        ),
+      );
+    } else if (mounted) {
+      // Mostrar alerta si los datos son incorrectos
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Correo/Usuario o contraseña incorrectos'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ==========================================
-            // CABECERA
-            // ==========================================
             const AuthHeader(
               imageUrl:
                   'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=500&q=80',
@@ -52,9 +105,6 @@ class LoginView extends StatelessWidget {
 
             const SizedBox(height: 0),
 
-            // ==========================================
-            // TÍTULO
-            // ==========================================
             Transform.translate(
               offset: const Offset(0, -18),
               child: Text(
@@ -69,17 +119,14 @@ class LoginView extends StatelessWidget {
 
             const SizedBox(height: 5),
 
-            // ==========================================
-            // FORMULARIO
-            // ==========================================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
-
               child: Column(
                 children: [
-                  // Correo
-                  const CustomTextField(
-                    label: 'Correo electrónico',
+                  // Correo / Usuario
+                  CustomTextField(
+                    controller: _emailController, // Assumed property on CustomTextField
+                    label: 'Correo electrónico o usuario',
                     hintText: 'liz@gmail.com',
                     prefixIcon: Icons.email,
                   ),
@@ -87,12 +134,13 @@ class LoginView extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Contraseña
-                  const CustomTextField(
+                  CustomTextField(
+                    controller: _passwordController, // Assumed property on CustomTextField
                     label: 'Contraseña',
                     hintText: '********',
                     prefixIcon: Icons.lock,
                     isPassword: true,
-                    suffixIcon: Icon(
+                    suffixIcon: const Icon(
                       Icons.visibility_off,
                       color: Color(0xFF33691E),
                     ),
@@ -100,9 +148,6 @@ class LoginView extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  // ==========================================
-                  // OLVIDASTE TU CONTRASEÑA
-                  // ==========================================
                   Align(
                     alignment: Alignment.center,
                     child: TextButton(
@@ -119,88 +164,76 @@ class LoginView extends StatelessWidget {
 
                   const SizedBox(height: 10),
 
-                  // ==========================================
                   // BOTÓN INICIAR SESIÓN
-                  // ==========================================
-                 // ==========================================
-// BOTÓN INICIAR SESIÓN
-// ==========================================
-SizedBox(
-  width: double.infinity,
-  height: 55,
-  child: ElevatedButton(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: const Color(0xFF558B2F),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      elevation: 0,
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF558B2F),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: _isLoading ? null : _handleLogin,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              'Iniciar sesión',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Botón de Biometría (Huella / Face ID)
+                  IconButton(
+                    iconSize: 45,
+                    icon: const Icon(
+                      Icons.fingerprint,
+                      color: Color(0xFF558B2F),
+                    ),
+                    onPressed: () async {
+                      bool canAuth = await BiometricService.isBiometricAvailable();
+
+                      if (!canAuth) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Tu dispositivo no cuenta con autenticación biométrica activa'),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                     bool authenticated = await BiometricService.authenticate();
+
+if (authenticated && context.mounted) {
+  // Usamos forceLogin para saltarnos la validación de contraseña de texto
+  await Provider.of<AuthProvider>(context, listen: false).forceLogin('UsuarioBiometrico');
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const NovedadesView(),
     ),
-    onPressed: () {
-      // Activamos la sesión con el Provider
-      Provider.of<AuthProvider>(context, listen: false).login();
-
-      // Navegamos a la siguiente vista
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const NovedadesView(),
-        ),
-      );
-    },
-    child: Text(
-      'Iniciar sesión',
-      style: GoogleFonts.poppins(
-        fontSize: 18,
-        color: Colors.white,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-  ),
-),
-// Botón de Biometría (Huella / Face ID)
-IconButton(
-  iconSize: 45,
-  icon: const Icon(
-    Icons.fingerprint, // O Icons.face si prefieres
-    color: Color(0xFF558B2F),
-  ),
-  onPressed: () async {
-    bool canAuth = await BiometricService.isBiometricAvailable();
-    
-    if (!canAuth) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tu dispositivo no cuenta con autenticación biométrica activa'),
-        ),
-      );
-      return;
-    }
-
-    bool authenticated = await BiometricService.authenticate();
-
-    if (authenticated && context.mounted) {
-      // 1. Iniciamos sesión en nuestro Provider
-      Provider.of<AuthProvider>(context, listen: false).login();
-
-      // 2. Navegamos a la vista principal
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const NovedadesView(),
-        ),
-      );
-    }
-  },
-),
-
-
+    (route) => false,
+  );
+}
+                    },
+                  ),
 
                   const SizedBox(height: 25),
 
-                  // ==========================================
                   // IR AL REGISTRO
-                  // ==========================================
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -211,18 +244,19 @@ IconButton(
                           fontSize: 14,
                         ),
                       ),
-
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             PageRouteBuilder(
-                              transitionDuration: const Duration(milliseconds: 400),
-                              pageBuilder: (context, animation, secondaryAnimation) {
+                              transitionDuration:
+                                  const Duration(milliseconds: 400),
+                              pageBuilder: (context, animation,
+                                  secondaryAnimation) {
                                 return const RegisterView();
                               },
-                              transitionsBuilder:
-                                  (context, animation, secondaryAnimation, child) {
+                              transitionsBuilder: (context, animation,
+                                  secondaryAnimation, child) {
                                 return FadeTransition(
                                   opacity: animation,
                                   child: child,
@@ -231,7 +265,6 @@ IconButton(
                             ),
                           );
                         },
-
                         child: Text(
                           'Únete aquí',
                           style: GoogleFonts.poppins(

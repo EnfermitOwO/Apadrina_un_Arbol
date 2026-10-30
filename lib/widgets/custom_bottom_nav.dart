@@ -24,7 +24,7 @@ class CustomBottomNav extends StatelessWidget {
             // Protection .clamp(0, 2): Evita errores de índice fuera de rango
             currentIndex: currentIndex.clamp(0, 2),
             onTap: (index) {
-              if (index == 2) {
+              if (index == 3) {
                 // Redirección a Perfil ("Tú")
                 Navigator.push(
                   context,

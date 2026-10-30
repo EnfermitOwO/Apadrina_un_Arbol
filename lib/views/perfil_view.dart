@@ -83,7 +83,14 @@ class PerfilView extends StatelessWidget {
                  Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginView()));
                 
                 // (Prueba temporal para simular que entras al dar clic):
-                authProvider.login();
+                onTap: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const LoginView(), // O la vista de login que tengas
+    ),
+  );
+};
               },
             ),
             _buildOptionTile(

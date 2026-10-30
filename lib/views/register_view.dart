@@ -5,55 +5,139 @@ import 'package:provider/provider.dart';
 import '/widgets/header.dart';
 import '/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
-import '../services/biometric_service.dart'; // Importamos el servicio biométrico
+import '../services/biometric_service.dart';
 import 'novedades_view.dart';
 
-class RegisterView extends StatelessWidget {
+class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
 
-  // Método auxiliar para autenticar e iniciar sesión
+  @override
+  State<RegisterView> createState() => _RegisterViewState();
+}
+
+class _RegisterViewState extends State<RegisterView> {
+  // Controladores para capturar los datos de los inputs
+  final TextEditingController _nombreUsuarioController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nombreUsuarioController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // Procesa el registro con validaciones Regex y llamada a MongoDB
+  Future<void> _handleRegister() async {
+    final nombreUsuario = _nombreUsuarioController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // 1. Validar campos vacíos
+    if (nombreUsuario.isEmpty || email.isEmpty || password.isEmpty) {
+      _showSnackBar('Por favor llena todos los campos.', Colors.orange);
+      return;
+    }
+
+    // 2. Validar formato de Correo Electrónico
+    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegExp.hasMatch(email)) {
+      _showSnackBar('Ingresa un correo electrónico válido.', Colors.orange);
+      return;
+    }
+
+    // 3. Validar Contraseña Segura:
+    // Mínimo 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial
+    final passwordRegExp = RegExp(
+      r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,}$',
+    );
+
+    if (!passwordRegExp.hasMatch(password)) {
+      _showSnackBar(
+        'La contraseña debe incluir mínimo 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial (@!%*?&._-)',
+        Colors.redAccent,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // 4. Intentar registro en MongoDB
+    String? errorResult = await authProvider.register(nombreUsuario, email, password);
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (errorResult == null) {
+      _showSnackBar('¡Cuenta creada e iniciada con éxito!', Colors.green);
+
+      // Redirigir a NovedadesView eliminando las pantallas anteriores de la pila
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const NovedadesView()),
+        (route) => false,
+      );
+    } else if (errorResult == 'CORREO_DUPLICADO') {
+      _showSnackBar('El correo electrónico ya está registrado.', Colors.red);
+    } else if (errorResult == 'USUARIO_DUPLICADO') {
+      _showSnackBar('El nombre de usuario ya está ocupado.', Colors.red);
+    } else {
+      _showSnackBar('Ocurrió un error al conectar con MongoDB.', Colors.red);
+    }
+  }
+
+  // Autenticación biométrica rápida (Face ID / Huella)
   Future<void> _handleBiometricRegister(BuildContext context) async {
     bool canAuth = await BiometricService.isBiometricAvailable();
 
     if (!canAuth) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tu dispositivo no cuenta con autenticación biométrica activa.'),
-          ),
-        );
+        _showSnackBar('Tu dispositivo no cuenta con autenticación biométrica activa.', Colors.orange);
       }
       return;
     }
 
     bool authenticated = await BiometricService.authenticate();
 
-    if (authenticated && context.mounted) {
-      // Guardamos sesión en el Provider
-      Provider.of<AuthProvider>(context, listen: false).login();
+if (authenticated && context.mounted) {
+  // Usamos forceLogin para saltarnos la validación de contraseña de texto
+  await Provider.of<AuthProvider>(context, listen: false).forceLogin('UsuarioBiometrico');
 
-      // Navegamos limpiando la pila de pantallas
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const NovedadesView(),
-        ),
-        (route) => false,
-      );
-    }
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const NovedadesView(),
+    ),
+    (route) => false,
+  );
+}
+  }
+
+  void _showSnackBar(String text, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: color,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ==========================================
             // CABECERA
-            // ==========================================
             const AuthHeader(
               imageUrl:
                   'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=500&q=80',
@@ -61,9 +145,7 @@ class RegisterView extends StatelessWidget {
 
             const SizedBox(height: 0),
 
-            // ==========================================
             // TÍTULO
-            // ==========================================
             Transform.translate(
               offset: const Offset(0, -18),
               child: Text(
@@ -78,24 +160,24 @@ class RegisterView extends StatelessWidget {
 
             const SizedBox(height: 5),
 
-            // ==========================================
             // FORMULARIO
-            // ==========================================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  // Nombre
-                  const CustomTextField(
-                    label: 'Nombre',
+                  // Nombre de usuario
+                  CustomTextField(
+                    controller: _nombreUsuarioController,
+                    label: 'Nombre de usuario',
                     hintText: 'Liz',
                     prefixIcon: Icons.person,
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Correo
-                  const CustomTextField(
+                  // Correo electrónico
+                  CustomTextField(
+                    controller: _emailController,
                     label: 'Correo electrónico',
                     hintText: 'liz@gmail.com',
                     prefixIcon: Icons.email,
@@ -104,12 +186,13 @@ class RegisterView extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Contraseña
-                  const CustomTextField(
+                  CustomTextField(
+                    controller: _passwordController,
                     label: 'Contraseña',
                     hintText: '********',
                     prefixIcon: Icons.lock,
                     isPassword: true,
-                    suffixIcon: Icon(
+                    suffixIcon: const Icon(
                       Icons.visibility_off,
                       color: Color(0xFF33691E),
                     ),
@@ -117,9 +200,7 @@ class RegisterView extends StatelessWidget {
 
                   const SizedBox(height: 25),
 
-                  // ==========================================
                   // BOTÓN REGISTRARSE
-                  // ==========================================
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -131,35 +212,23 @@ class RegisterView extends StatelessWidget {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: () {
-                        // 1. Inicia sesión en Provider
-                        Provider.of<AuthProvider>(context, listen: false).login();
-
-                        // 2. Navega a NovedadesView limpiando la navegación
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NovedadesView(),
-                          ),
-                          (route) => false,
-                        );
-                      },
-                      child: Text(
-                        'Registrarme',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      onPressed: _isLoading ? null : _handleRegister,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              'Registrarme',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // ==========================================
-                  // OPCIÓN BIOMÉTRICA (HUELLA / FACE ID)
-                  // ==========================================
+                  // OPCIÓN BIOMÉTRICA
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -174,7 +243,7 @@ class RegisterView extends StatelessWidget {
                       IconButton(
                         iconSize: 36,
                         icon: const Icon(
-                          Icons.fingerprint, // Se adapta automáticamente a Face ID / Huella
+                          Icons.fingerprint,
                           color: Color(0xFF33691E),
                         ),
                         onPressed: () => _handleBiometricRegister(context),
@@ -184,9 +253,7 @@ class RegisterView extends StatelessWidget {
 
                   const SizedBox(height: 15),
 
-                  // ==========================================
                   // REGRESAR AL LOGIN
-                  // ==========================================
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -197,7 +264,6 @@ class RegisterView extends StatelessWidget {
                           fontSize: 14,
                         ),
                       ),
-
                       GestureDetector(
                         onTap: () {
                           Navigator.pop(context);
