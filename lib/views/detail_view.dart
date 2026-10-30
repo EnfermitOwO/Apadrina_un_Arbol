@@ -5,7 +5,9 @@ import '../main.dart';
 import '../widgets/custom_bottom_nav.dart';
 
 class DetalleArbolScreen extends StatelessWidget {
-  const DetalleArbolScreen({super.key});
+  final Map<String, dynamic> arbol;
+
+  const DetalleArbolScreen({super.key, required this.arbol});
 
   // Colores extraídos del diseño original
   static const Color verdePrincipal = Color(0xFF3B6B23);
@@ -14,12 +16,21 @@ class DetalleArbolScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Extracción de datos con fallbacks seguros
+    final String nombreComun = arbol['nombre_comun'] ?? 'Árbol sin nombre';
+    final String nombreCientifico = arbol['nombre_cientifico'] ?? '';
+    final String descripcion = arbol['descripcion_larga'] ?? arbol['descripcion'] ?? 'Sin descripción disponible.';
+    final String curiosidades = arbol['datos_interesantes'] ?? 'Sin información adicional.';
+    final String altura = arbol['altura'] ?? 'No especificada';
+    final String epoca = arbol['epoca'] ?? 'No especificada';
+    final String imagenUrl = arbol['imagen'] ?? '';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 1. Encabezado centrado con flecha de regreso a la izquierda
+            // 1. Encabezado centrado con flecha de regreso
             _buildAppBar(context),
             const Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
 
@@ -45,33 +56,71 @@ class DetalleArbolScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Imagen del árbol
+                        // Imagen del árbol desde Cloudinary (o red)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16.0),
-                          child: Image.asset(
-                            'assets/images/durazno.png',
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 180,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.park, size: 60, color: Colors.grey),
-                              );
-                            },
-                          ),
+                          child: imagenUrl.isNotEmpty
+                              ? Image.network(
+                                  imagenUrl,
+                                  height: 200,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 200,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.park, size: 60, color: Colors.grey),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  height: 200,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.park, size: 60, color: Colors.grey),
+                                ),
                         ),
                         const SizedBox(height: 16),
 
-                        // Título "Duraznillo"
+                        // Nombre Común
                         Text(
-                          'Duraznillo',
+                          nombreComun,
                           style: GoogleFonts.poppins(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: verdePrincipal,
                           ),
+                        ),
+
+                        // Nombre Científico (si existe)
+                        if (nombreCientifico.isNotEmpty) ...[
+                          Text(
+                            nombreCientifico,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+
+                        // Especificaciones (Altura y Época)
+                        Row(
+                          children: [
+                            Chip(
+                              avatar: const Icon(Icons.straighten, size: 16, color: verdePrincipal),
+                              label: Text('Altura: $altura', style: const TextStyle(fontSize: 12)),
+                              backgroundColor: fondoVerdeClaro,
+                              side: BorderSide.none,
+                            ),
+                            const SizedBox(width: 8),
+                            Chip(
+                              avatar: const Icon(Icons.eco, size: 16, color: verdePrincipal),
+                              label: Text('Época: $epoca', style: const TextStyle(fontSize: 12)),
+                              backgroundColor: fondoVerdeClaro,
+                              side: BorderSide.none,
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
 
@@ -86,16 +135,16 @@ class DetalleArbolScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'El Duraznillo o "Árbol de Judas" es una especie ornamental de tamaño pequeño a mediano.',
+                          descripcion,
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: Colors.black87,
-                            height: 1.3,
+                            height: 1.4,
                           ),
                         ),
                         const SizedBox(height: 12),
 
-                        // Curiosidades
+                        // Curiosidades / Datos interesantes
                         Text(
                           'Curiosidades',
                           style: GoogleFonts.poppins(
@@ -106,13 +155,13 @@ class DetalleArbolScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Sus flores son comestibles y ricas en vitamina C, a menudo usadas en ensaladas gourmet',
+                          curiosidades,
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: Colors.black87,
-                            height: 1.3,
+                            height: 1.4,
                           ),
-                        ),  
+                        ),
 
                         const SizedBox(height: 20),
 
@@ -123,8 +172,8 @@ class DetalleArbolScreen extends StatelessWidget {
                           child: ElevatedButton(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('¡Proceso de adopción iniciado!'),
+                                SnackBar(
+                                  content: Text('¡Proceso de adopción iniciado para $nombreComun!'),
                                   backgroundColor: verdePrincipal,
                                 ),
                               );
@@ -178,7 +227,6 @@ class DetalleArbolScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        
                       ],
                     ),
                   ),

@@ -7,6 +7,7 @@ class CustomTextField extends StatelessWidget {
   final IconData prefixIcon;
   final bool isPassword;
   final Widget? suffixIcon;
+  final TextEditingController? controller; // <-- 1. Declarado aquí
 
   const CustomTextField({
     super.key,
@@ -15,6 +16,7 @@ class CustomTextField extends StatelessWidget {
     required this.prefixIcon,
     this.isPassword = false,
     this.suffixIcon,
+    this.controller, // <-- 2. Añadido al constructor
   });
 
   @override
@@ -34,6 +36,7 @@ class CustomTextField extends StatelessWidget {
         const SizedBox(height: 8),
 
         TextField(
+          controller: controller, // <-- 3. Conectado al TextField de Flutter
           obscureText: isPassword,
           style: GoogleFonts.poppins(
             fontSize: 14,
