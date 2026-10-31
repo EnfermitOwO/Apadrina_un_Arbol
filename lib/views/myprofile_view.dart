@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:apadrina_un_arbol/widgets/custom_bottom_nav.dart';
 
-import '../widgets/custom_bottom_nav.dart';
 import '../models/post_model.dart';
 import '../services/cloudinary_service.dart';
 import '../providers/auth_provider.dart';
