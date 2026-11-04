@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:apadrina_un_arbol/widgets/custom_bottom_nav.dart';
 import 'package:apadrina_un_arbol/widgets/post_card.dart';
 import 'package:apadrina_un_arbol/widgets/custom_header.dart';
+import 'package:apadrina_un_arbol/models/foro_remote_model.dart';
+import 'package:apadrina_un_arbol/services/foro_service.dart';
 
 class NovedadesView extends StatefulWidget {
   const NovedadesView({super.key});
@@ -13,11 +15,13 @@ class NovedadesView extends StatefulWidget {
 
 class _NovedadesViewState extends State<NovedadesView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late Future<List<ForoRemoteModel>> _futurePosts;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _futurePosts = ForoService.obtenerPosts(); // Carga de datos reales desde la API/MongoDB
   }
 
   @override
@@ -58,56 +62,88 @@ class _NovedadesViewState extends State<NovedadesView> with SingleTickerProvider
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // --- PESTAÑA 1: "Para ti" ---
-                  ListView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    children: const [
-                      PostCard(
-                        avatarUrl: 'https://i.imgur.com/7y9XPdK.png',
-                        username: 'Michael Scott',
-                        text: 'Yo planté este árbol. De nada, Tierra. Aquí va un texto más largo para probar cómo baja de línea automáticamente sin salirse de la pantalla.',
-                        imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=1000&auto=format&fit=crop',
-                        initialLikes: 10,
-                        comments: '13',
-                        shares: '2',
-                      ),
-                      Divider(height: 24, thickness: 6, color: Color(0xFFF2F4F1)),
-                      PostCard(
-                        avatarUrl: 'https://i.imgur.com/BoN9kdC.png',
-                        username: 'Dewey_',
-                        text: 'el futuro es hoy, viste viejo',
-                        imageUrl: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=1000&auto=format&fit=crop',
-                        initialLikes: 10,
-                        comments: '13',
-                        shares: '2',
-                      ),
-                    ],
+                  // --- PESTAÑA 1: "Para ti" (Dinámico con MongoDB) ---
+                  FutureBuilder<List<ForoRemoteModel>>(
+                    future: _futurePosts,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF388E3C)),
+                        );
+                      } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No hay publicaciones en el foro todavía.',
+                            style: GoogleFonts.poppins(color: Colors.grey),
+                          ),
+                        );
+                      }
+
+                      final posts = snapshot.data!;
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return Column(
+                            children: [
+                              PostCard(
+                                avatarUrl: 'https://i.imgur.com/7y9XPdK.png',
+                                username: post.nombreUsuario,
+                                text: post.mensaje,
+                                imageUrl: post.imagen, // Si es null, la tarjeta se adapta automáticamente
+                                initialLikes: 10,
+                                comments: post.comentarios.length.toString(),
+                                shares: '2',
+                              ),
+                              const Divider(height: 24, thickness: 6, color: Color(0xFFF2F4F1)),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
 
-                  // --- PESTAÑA 2: "Amigos" ---
-                  ListView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    children: const [
-                      PostCard(
-                        avatarUrl: 'https://i.imgur.com/7y9XPdK.png',
-                        username: 'Dwight',
-                        text: 'Es una idea ridícula... pero admito que debió ocurrirse a mi primero. Los árboles son míos.',
-                        imageUrl: null, // <- Al ser null, la tarjeta se adapta automáticamente a solo texto
-                        initialLikes: 10,
-                        comments: '13',
-                        shares: '2',
-                      ),
-                      Divider(height: 24, thickness: 6, color: Color(0xFFF2F4F1)),
-                      PostCard(
-                        avatarUrl: 'https://i.imgur.com/7y9XPdK.png',
-                        username: 'Rubí',
-                        text: 'Analizando las historias de usuario para el siguiente sprint.',
-                        imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop',
-                        initialLikes: 15,
-                        comments: '3',
-                        shares: '0',
-                      ),
-                    ],
+                  // --- PESTAÑA 2: "Amigos" (Carga dinámica compartida o filtrada) ---
+                  FutureBuilder<List<ForoRemoteModel>>(
+                    future: _futurePosts,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF388E3C)),
+                        );
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No hay publicaciones de amigos.',
+                            style: GoogleFonts.poppins(color: Colors.grey),
+                          ),
+                        );
+                      }
+
+                      final posts = snapshot.data!;
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return Column(
+                            children: [
+                              PostCard(
+                                avatarUrl: 'https://i.imgur.com/BoN9kdC.png',
+                                username: post.nombreUsuario,
+                                text: post.mensaje,
+                                imageUrl: post.imagen,
+                                initialLikes: 15,
+                                comments: post.comentarios.length.toString(),
+                                shares: '1',
+                              ),
+                              const Divider(height: 24, thickness: 6, color: Color(0xFFF2F4F1)),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
 
                   // --- PESTAÑA 3: "Añadir +" (Con diseño de barra de búsqueda de amigos) ---
