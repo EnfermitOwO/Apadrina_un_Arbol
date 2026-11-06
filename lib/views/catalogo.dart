@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 // Importamos la pantalla principal (main.dart), widgets y el servicio de MongoDB
@@ -40,16 +41,37 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   /// Carga los datos dinámicos desde la colección 'arboles' en MongoDB Atlas
   Future<void> _cargarArbolesDesdeMongo() async {
     try {
+      debugPrint("========================================");
+      debugPrint("1. COMENZANDO CONSULTA DE ÁRBOLES...");
+      debugPrint("========================================");
+
       final coleccion = MongoService.getCollection('arboles');
+
+      debugPrint("2. COLECCIÓN OBTENIDA CORRECTAMENTE");
+
       final resultados = await coleccion.find().toList();
+
+      debugPrint("3. ÁRBOLES ENCONTRADOS: ${resultados.length}");
+      debugPrint("4. DATOS RECIBIDOS: $resultados");
+
+      if (!mounted) return;
 
       setState(() {
         _allArboles = resultados;
         _arbolesFiltrados = resultados;
         _isLoading = false;
       });
-    } catch (e) {
-      debugPrint("Error al cargar árboles desde MongoDB: $e");
+
+      debugPrint("5. CATÁLOGO ACTUALIZADO CORRECTAMENTE");
+
+    } catch (e, stackTrace) {
+      debugPrint("========================================");
+      debugPrint("ERROR AL CARGAR CATÁLOGO: $e");
+      debugPrint("DETALLES DEL ERROR: $stackTrace");
+      debugPrint("========================================");
+
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });
@@ -117,7 +139,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   Widget _buildSearchBar() {
     return TextField(
       controller: _searchController,
-      onChanged: _filtrarArboles, // Filtra conforme escribes
+      onChanged: _filtrarArboles,
       decoration: InputDecoration(
         hintText: 'Busca tu árbol',
         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -225,7 +247,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       shrinkWrap: true,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.72, // Proporción ajustada para evitar desbordes visuales
+        childAspectRatio: 0.72,
         crossAxisSpacing: 12,
         mainAxisSpacing: 16,
       ),
@@ -352,4 +374,3 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 }
-

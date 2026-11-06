@@ -26,11 +26,10 @@ class ForoRemoteModel {
       parsedId = json['_id']?.toString() ?? '';
     }
 
-    // Manejo de la URL de la imagen (si empieza con barra diagonal, la completamos con localhost opcionalmente)
+    // Como usas Cloudinary, la imagen viene directamente como una URL completa (https://res.cloudinary.com/...)
     String? parsedImagen = json['imagen'];
-    if (parsedImagen != null && parsedImagen.startsWith('/')) {
-      //ip del internet
-      parsedImagen = 'http://10.0.2.2$parsedImagen';
+    if (parsedImagen != null && parsedImagen.isEmpty) {
+      parsedImagen = null; // Evitamos strings vacíos
     }
 
     return ForoRemoteModel(

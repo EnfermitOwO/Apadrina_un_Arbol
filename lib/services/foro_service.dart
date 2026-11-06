@@ -4,7 +4,7 @@ import '../models/foro_remote_model.dart';
 
 class ForoService {
   // Reemplazamos 'localhost' por '10.0.2.2' para que el emulador llegue a tu XAMPP
-  static const String url = 'http://10.0.2.2/Apadrina-un-Arbol/apis/api_foro.php';
+  static const String url = 'https://apadrina-un-arbol-web.onrender.com/apis/api_foro.php';
 
   static Future<List<ForoRemoteModel>> obtenerPosts() async {
     try {
