@@ -1,10 +1,21 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
 import 'package:apadrina_un_arbol/widgets/custom_bottom_nav.dart';
 import 'package:apadrina_un_arbol/widgets/post_card.dart';
 import 'package:apadrina_un_arbol/widgets/custom_header.dart';
+
 import 'package:apadrina_un_arbol/models/foro_remote_model.dart';
+import 'package:apadrina_un_arbol/models/amigo_model.dart';
+
 import 'package:apadrina_un_arbol/services/foro_service.dart';
+import 'package:apadrina_un_arbol/services/amigos_service.dart';
+
+import 'package:apadrina_un_arbol/providers/auth_provider.dart';
+
+import 'buscar_amigos_view.dart';
 
 class NovedadesView extends StatefulWidget {
   const NovedadesView({super.key});
@@ -13,21 +24,211 @@ class NovedadesView extends StatefulWidget {
   State<NovedadesView> createState() => _NovedadesViewState();
 }
 
-class _NovedadesViewState extends State<NovedadesView> with SingleTickerProviderStateMixin {
+class _NovedadesViewState extends State<NovedadesView>
+    with SingleTickerProviderStateMixin {
+
   late TabController _tabController;
+
   late Future<List<ForoRemoteModel>> _futurePosts;
+  late Future<List<AmigoModel>> _futureAmigos;
+
+  String _emailUsuario = '';
 
   @override
   void initState() {
     super.initState();
+
     _tabController = TabController(length: 3, vsync: this);
-    _futurePosts = ForoService.obtenerPosts(); // Carga de datos reales desde la API/MongoDB
+
+    _emailUsuario = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).currentUser?['email']?.toString() ?? '';
+
+    _futurePosts = ForoService.obtenerPosts();
+    _futureAmigos = _obtenerAmigos();
+  }
+
+  Future<List<AmigoModel>> _obtenerAmigos() {
+    return AmigosService.obtenerAmigos(
+      emailUsuario: _emailUsuario,
+    );
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // Actualizar la lista de amigos
+  void _actualizarAmigos() {
+    if (_emailUsuario.isNotEmpty) {
+      setState(() {
+        _futureAmigos = _obtenerAmigos();
+      });
+    }
+  }
+
+  // Construir tarjetas de publicaciones
+  Widget _construirLista(
+    List<ForoRemoteModel> posts, {
+    bool amigos = false,
+  }) {
+    if (posts.isEmpty) {
+      return Center(
+        child: Text(
+          amigos
+              ? 'Tus amigos todavía no tienen publicaciones.'
+              : 'No hay publicaciones en el foro todavía.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+
+        return Column(
+          children: [
+            PostCard(
+              avatarUrl: amigos
+                  ? 'https://i.imgur.com/BoN9kdC.png'
+                  : 'https://i.imgur.com/7y9XPdK.png',
+              username: post.nombreUsuario,
+              text: post.mensaje,
+              imageUrl: post.imagen,
+              initialLikes: amigos ? 15 : 10,
+              comments: post.comentarios.length.toString(),
+              shares: amigos ? '1' : '2',
+            ),
+            const Divider(
+              height: 24,
+              thickness: 6,
+              color: Color(0xFFF2F4F1),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Pestaña Para ti
+  Widget _pestanaParaTi() {
+    return FutureBuilder<List<ForoRemoteModel>>(
+      future: _futurePosts,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF388E3C),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Center(
+            child: Text(
+              'No se pudieron cargar las publicaciones.',
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          );
+        }
+
+        return _construirLista(snapshot.data!);
+      },
+    );
+  }
+
+  // Pestaña Amigos
+  Widget _pestanaAmigos() {
+    return FutureBuilder<List<AmigoModel>>(
+      future: _futureAmigos,
+      builder: (context, amigosSnapshot) {
+
+        if (amigosSnapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF388E3C),
+            ),
+          );
+        }
+
+        if (amigosSnapshot.hasError ||
+            !amigosSnapshot.hasData) {
+          return Center(
+            child: Text(
+              'No se pudo cargar tu lista de amigos.',
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          );
+        }
+
+        final correosAmigos = amigosSnapshot.data!
+            .map((amigo) => amigo.email.trim().toLowerCase())
+            .where((email) => email.isNotEmpty)
+            .toSet();
+
+        if (correosAmigos.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Todavía no tienes amigos agregados.\n'
+                '¡Busca personas para ver sus publicaciones!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  color: Colors.grey,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return FutureBuilder<List<ForoRemoteModel>>(
+          future: _futurePosts,
+          builder: (context, postsSnapshot) {
+
+            if (postsSnapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF388E3C),
+                ),
+              );
+            }
+
+            if (postsSnapshot.hasError ||
+                !postsSnapshot.hasData) {
+              return Center(
+                child: Text(
+                  'No se pudieron cargar las publicaciones.',
+                  style: GoogleFonts.poppins(color: Colors.grey),
+                ),
+              );
+            }
+
+            final publicacionesAmigos =
+                postsSnapshot.data!.where((post) {
+              return correosAmigos.contains(
+                post.emailUsuario.trim().toLowerCase(),
+              );
+            }).toList();
+
+            return _construirLista(
+              publicacionesAmigos,
+              amigos: true,
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -37,17 +238,26 @@ class _NovedadesViewState extends State<NovedadesView> with SingleTickerProvider
       body: SafeArea(
         child: Column(
           children: [
-            // Header personalizado
             const CustomHeader(),
 
-            // Pestañas (Para ti / Amigos / Añadir +)
             TabBar(
               controller: _tabController,
+              onTap: (index) {
+                if (index == 1) {
+                  _actualizarAmigos();
+                }
+              },
               labelColor: const Color(0xFF2E7D32),
               unselectedLabelColor: Colors.grey,
               indicatorColor: const Color(0xFF2E7D32),
-              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-              unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.normal, fontSize: 14),
+              labelStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.normal,
+                fontSize: 14,
+              ),
               tabs: const [
                 Tab(text: 'Para ti'),
                 Tab(text: 'Amigos'),
@@ -55,127 +265,18 @@ class _NovedadesViewState extends State<NovedadesView> with SingleTickerProvider
               ],
             ),
 
-            const Divider(height: 1, color: Color(0xFFE0E0E0)),
+            const Divider(
+              height: 1,
+              color: Color(0xFFE0E0E0),
+            ),
 
-            // Contenido dinámico según la pestaña seleccionada
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // --- PESTAÑA 1: "Para ti" (Dinámico con MongoDB) ---
-                  FutureBuilder<List<ForoRemoteModel>>(
-                    future: _futurePosts,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: Color(0xFF388E3C)),
-                        );
-                      } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No hay publicaciones en el foro todavía.',
-                            style: GoogleFonts.poppins(color: Colors.grey),
-                          ),
-                        );
-                      }
-
-                      final posts = snapshot.data!;
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: posts.length,
-                        itemBuilder: (context, index) {
-                          final post = posts[index];
-                          return Column(
-                            children: [
-                              PostCard(
-                                avatarUrl: 'https://i.imgur.com/7y9XPdK.png',
-                                username: post.nombreUsuario,
-                                text: post.mensaje,
-                                imageUrl: post.imagen, // Si es null, la tarjeta se adapta automáticamente
-                                initialLikes: 10,
-                                comments: post.comentarios.length.toString(),
-                                shares: '2',
-                              ),
-                              const Divider(height: 24, thickness: 6, color: Color(0xFFF2F4F1)),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-
-                  // --- PESTAÑA 2: "Amigos" (Carga dinámica compartida o filtrada) ---
-                  FutureBuilder<List<ForoRemoteModel>>(
-                    future: _futurePosts,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: Color(0xFF388E3C)),
-                        );
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No hay publicaciones de amigos.',
-                            style: GoogleFonts.poppins(color: Colors.grey),
-                          ),
-                        );
-                      }
-
-                      final posts = snapshot.data!;
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: posts.length,
-                        itemBuilder: (context, index) {
-                          final post = posts[index];
-                          return Column(
-                            children: [
-                              PostCard(
-                                avatarUrl: 'https://i.imgur.com/BoN9kdC.png',
-                                username: post.nombreUsuario,
-                                text: post.mensaje,
-                                imageUrl: post.imagen,
-                                initialLikes: 15,
-                                comments: post.comentarios.length.toString(),
-                                shares: '1',
-                              ),
-                              const Divider(height: 24, thickness: 6, color: Color(0xFFF2F4F1)),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-
-                  // --- PESTAÑA 3: "Añadir +" (Con diseño de barra de búsqueda de amigos) ---
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F8E9), // Fondo verde pastel claro
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: TextField(
-                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
-                            decoration: InputDecoration(
-                              hintText: 'Buscar nuevos amigos',
-                              hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
-                              prefixIcon: const SizedBox(width: 16),
-                              suffixIcon: const Padding(
-                                padding: EdgeInsets.only(right: 12.0),
-                                child: Icon(Icons.search, color: Color(0xFF388E3C)),
-                              ),
-                              suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _pestanaParaTi(),
+                  _pestanaAmigos(),
+                  const BuscarAmigosView(),
                 ],
               ),
             ),

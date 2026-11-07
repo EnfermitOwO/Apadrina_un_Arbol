@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bcrypt/bcrypt.dart';
@@ -14,16 +15,51 @@ class AuthProvider with ChangeNotifier {
     _loadAuthStatus();
   }
 
+  // Recuperar la sesión y los datos del usuario
   Future<void> _loadAuthStatus() async {
     final prefs = await SharedPreferences.getInstance();
+
     _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (_isLoggedIn) {
+      final email = prefs.getString('email');
+
+      if (email != null && email.isNotEmpty) {
+        try {
+          await MongoService.connect();
+
+          final usuariosColl =
+              MongoService.getCollection('usuarios');
+
+          final user = await usuariosColl.findOne({
+            'email': email,
+          });
+
+          if (user != null) {
+            _currentUser = user;
+          } else {
+            _isLoggedIn = false;
+          }
+        } catch (e) {
+          debugPrint('Error recuperando usuario: $e');
+        }
+      }
+    }
+
     notifyListeners();
   }
 
-  /// Inicia sesión buscando por nombre_usuario o email y verificando bcrypt
-  Future<bool> login(String usuarioOrEmail, String passwordPlano) async {
+  /// Inicia sesión buscando por nombre_usuario o email
+  /// y verificando bcrypt
+  Future<bool> login(
+    String usuarioOrEmail,
+    String passwordPlano,
+  ) async {
     try {
-      final usuariosColl = MongoService.getCollection('usuarios');
+      await MongoService.connect();
+
+      final usuariosColl =
+          MongoService.getCollection('usuarios');
 
       final user = await usuariosColl.findOne({
         '\$or': [
@@ -36,23 +72,35 @@ class AuthProvider with ChangeNotifier {
         String hashedPassword = user['password'] ?? '';
 
         bool passwordValida = false;
+
         try {
-          passwordValida = BCrypt.checkpw(passwordPlano, hashedPassword);
+          passwordValida =
+              BCrypt.checkpw(passwordPlano, hashedPassword);
         } catch (_) {
           passwordValida = (passwordPlano == hashedPassword);
         }
 
         if (passwordValida) {
           final prefs = await SharedPreferences.getInstance();
+
           await prefs.setBool('isLoggedIn', true);
-          await prefs.setString('nombre_usuario', user['nombre_usuario'] ?? '');
+          await prefs.setString(
+            'nombre_usuario',
+            user['nombre_usuario'] ?? '',
+          );
+          await prefs.setString(
+            'email',
+            user['email'] ?? '',
+          );
 
           _currentUser = user;
           _isLoggedIn = true;
+
           notifyListeners();
           return true;
         }
       }
+
       return false;
     } catch (e) {
       debugPrint("Error en login MongoDB: $e");
@@ -60,26 +108,41 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Registra un nuevo usuario indicando el motivo en caso de duplicados
-  Future<String?> register(String nombreUsuario, String email, String passwordPlano) async {
+  /// Registra un nuevo usuario
+  Future<String?> register(
+    String nombreUsuario,
+    String email,
+    String passwordPlano,
+  ) async {
     try {
-      final usuariosColl = MongoService.getCollection('usuarios');
+      await MongoService.connect();
 
-      // 1. Revisa específicamente si el correo ya existe
-      final existingEmail = await usuariosColl.findOne({'email': email});
+      final usuariosColl =
+          MongoService.getCollection('usuarios');
+
+      final existingEmail =
+          await usuariosColl.findOne({'email': email});
+
       if (existingEmail != null) {
-        return 'CORREO_DUPLICADO'; // Detiene el registro
+        return 'CORREO_DUPLICADO';
       }
 
-      // 2. Revisa específicamente si el nombre de usuario ya existe
-      final existingUsername = await usuariosColl.findOne({'nombre_usuario': nombreUsuario});
+      final existingUsername =
+          await usuariosColl.findOne({
+        'nombre_usuario': nombreUsuario,
+      });
+
       if (existingUsername != null) {
-        return 'USUARIO_DUPLICADO'; // Detiene el registro
+        return 'USUARIO_DUPLICADO';
       }
 
-      // 3. Si ambos están libres, procede con la inserción
-      String hashedPassword = BCrypt.hashpw(passwordPlano, BCrypt.gensalt());
-      int customId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      String hashedPassword = BCrypt.hashpw(
+        passwordPlano,
+        BCrypt.gensalt(),
+      );
+
+      int customId =
+          DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
       await usuariosColl.insertOne({
         'id': customId,
@@ -92,16 +155,16 @@ class AuthProvider with ChangeNotifier {
         'fecha_registro': DateTime.now().toIso8601String(),
       });
 
-      // Autentica automáticamente tras insertar
       await login(nombreUsuario, passwordPlano);
-      return null; // Retorna null cuando NO HUBO ERRORES
+
+      return null;
     } catch (e) {
       debugPrint("Error en registro MongoDB: $e");
       return 'ERROR_CONEXION';
     }
   }
 
-  /// Actualiza el perfil (nombre, bio, fotos de perfil y portada) en MongoDB
+  /// Actualiza el perfil
   Future<bool> actualizarPerfil({
     required String nombreUsuarioActual,
     required String nuevoNombre,
@@ -110,32 +173,44 @@ class AuthProvider with ChangeNotifier {
     String? fotoPortadaUrl,
   }) async {
     try {
-      final usuariosColl = MongoService.getCollection('usuarios');
+      await MongoService.connect();
+
+      final usuariosColl =
+          MongoService.getCollection('usuarios');
 
       final Map<String, dynamic> datosActualizados = {
         'nombre_usuario': nuevoNombre,
         'bio': nuevaBio,
       };
 
-      if (fotoPerfilUrl != null) datosActualizados['foto_perfil'] = fotoPerfilUrl;
-      if (fotoPortadaUrl != null) datosActualizados['foto_portada'] = fotoPortadaUrl;
+      if (fotoPerfilUrl != null) {
+        datosActualizados['foto_perfil'] = fotoPerfilUrl;
+      }
 
-      // Actualiza en MongoDB pasando el filtro directamente como un Map
+      if (fotoPortadaUrl != null) {
+        datosActualizados['foto_portada'] = fotoPortadaUrl;
+      }
+
       await usuariosColl.update(
         {'nombre_usuario': nombreUsuarioActual},
         {'\$set': datosActualizados},
       );
 
-      // Actualizar SharedPreferences si cambió el nombre de usuario
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('nombre_usuario', nuevoNombre);
 
-      // Actualiza la sesión local en memoria
       if (_currentUser != null) {
         _currentUser!['nombre_usuario'] = nuevoNombre;
         _currentUser!['bio'] = nuevaBio;
-        if (fotoPerfilUrl != null) _currentUser!['foto_perfil'] = fotoPerfilUrl;
-        if (fotoPortadaUrl != null) _currentUser!['foto_portada'] = fotoPortadaUrl;
+
+        if (fotoPerfilUrl != null) {
+          _currentUser!['foto_perfil'] = fotoPerfilUrl;
+        }
+
+        if (fotoPortadaUrl != null) {
+          _currentUser!['foto_portada'] = fotoPortadaUrl;
+        }
+
         notifyListeners();
       }
 
@@ -146,9 +221,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Fuerza el inicio de sesión directo (Ideal para Biometría)
+  /// Inicio de sesión biométrico
   Future<void> forceLogin(String nombreUsuario) async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setBool('isLoggedIn', true);
     await prefs.setString('nombre_usuario', nombreUsuario);
 
@@ -156,13 +232,17 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cerrar sesión
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.remove('isLoggedIn');
     await prefs.remove('nombre_usuario');
+    await prefs.remove('email');
 
     _isLoggedIn = false;
     _currentUser = null;
+
     notifyListeners();
   }
 }
