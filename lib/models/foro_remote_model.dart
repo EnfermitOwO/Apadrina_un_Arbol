@@ -1,3 +1,4 @@
+
 class ForoRemoteModel {
   final String id;
   final String emailUsuario;
@@ -18,28 +19,30 @@ class ForoRemoteModel {
   });
 
   factory ForoRemoteModel.fromJson(Map<String, dynamic> json) {
-    // Manejo seguro del ID por si MongoDB lo manda como mapa o string
     String parsedId = '';
+
     if (json['_id'] is Map) {
       parsedId = json['_id']['\$oid']?.toString() ?? '';
     } else {
       parsedId = json['_id']?.toString() ?? '';
     }
 
-    // Como usas Cloudinary, la imagen viene directamente como una URL completa (https://res.cloudinary.com/...)
-    String? parsedImagen = json['imagen'];
-    if (parsedImagen != null && parsedImagen.isEmpty) {
-      parsedImagen = null; // Evitamos strings vacíos
-    }
+    final imagenJson = json['imagen'];
 
     return ForoRemoteModel(
       id: parsedId,
-      emailUsuario: json['email_usuario']?.toString() ?? '',
-      nombreUsuario: json['nombre_usuario']?.toString() ?? 'Anónimo',
-      mensaje: json['mensaje']?.toString() ?? '',
-      imagen: parsedImagen,
-      fecha: json['fecha']?.toString() ?? '',
-      comentarios: json['comentarios'] is List ? json['comentarios'] : [],
+      emailUsuario:
+          (json['email_usuario'] ?? '').toString().trim().toLowerCase(),
+      nombreUsuario:
+          (json['nombre_usuario'] ?? 'Usuario').toString(),
+      mensaje: (json['mensaje'] ?? '').toString(),
+      imagen: imagenJson == null || imagenJson.toString().isEmpty
+          ? null
+          : imagenJson.toString(),
+      fecha: (json['fecha'] ?? '').toString(),
+      comentarios: json['comentarios'] is List
+          ? List<dynamic>.from(json['comentarios'])
+          : [],
     );
   }
 }

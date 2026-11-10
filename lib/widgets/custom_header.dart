@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart'; // <--- Importa tu AuthProvider
+import '../views/notificaciones_view.dart';
 import '../views/perfil_view.dart';
+
 
 class CustomHeader extends StatelessWidget implements PreferredSizeWidget {
   const CustomHeader({super.key});
@@ -67,10 +69,21 @@ class CustomHeader extends StatelessWidget implements PreferredSizeWidget {
           ),
           
           // Icono de notificación a la derecha
-          const Icon(
-            Icons.notifications,
-            color: Color(0xFF386623),
-            size: 27,
+          // Icono de notificaciones a la derecha
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificacionesView(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.notifications,
+              color: Color(0xFF386623),
+              size: 27,
+            ),
           ),
         ],
       ),

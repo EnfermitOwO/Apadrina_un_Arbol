@@ -1,24 +1,82 @@
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import '../models/foro_remote_model.dart';
 
 class ForoService {
-  // Reemplazamos 'localhost' por '10.0.2.2' para que el emulador llegue a tu XAMPP
-  static const String url = 'https://apadrina-un-arbol-web.onrender.com/apis/api_foro.php';
+  static const String url =
+      'https://apadrina-un-arbol-web.onrender.com/apis/api_foro.php';
 
+  // ==========================================
+  // OBTENER PUBLICACIONES
+  // ==========================================
   static Future<List<ForoRemoteModel>> obtenerPosts() async {
     try {
       final response = await http.get(Uri.parse(url));
 
-      if (response.statusCode == 200) {
-        List<dynamic> body = jsonDecode(response.body);
-        return body.map((dynamic item) => ForoRemoteModel.fromJson(item)).toList();
-      } else {
-        throw Exception('Error al cargar el foro: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Error al cargar publicaciones: ${response.statusCode}',
+        );
       }
+
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! List) {
+        throw Exception('La respuesta del servidor no es válida');
+      }
+
+      return decoded
+          .map(
+            (item) => ForoRemoteModel.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
     } catch (e) {
-      print('Error al conectar con la API del foro: $e');
-      throw Exception('No se pudo conectar con el servidor local');
+      print('Error al obtener publicaciones: $e');
+      rethrow;
+    }
+  }
+
+  // ==========================================
+  // CREAR PUBLICACIÓN
+  // ==========================================
+  static Future<bool> crearPost({
+    required String emailUsuario,
+    required String nombreUsuario,
+    required String mensaje,
+    String? imagen,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode({
+          'email_usuario': emailUsuario.trim().toLowerCase(),
+          'nombre_usuario': nombreUsuario.trim(),
+          'mensaje': mensaje.trim(),
+          'imagen': imagen,
+          'tipo_multimedia': 'image',
+        }),
+      );
+
+      print('Respuesta al publicar: ${response.body}');
+
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final resultado = jsonDecode(response.body);
+
+      return resultado is Map &&
+          resultado['success'] == true;
+    } catch (e) {
+      print('Error al crear publicación: $e');
+      return false;
     }
   }
 }
