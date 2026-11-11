@@ -157,9 +157,11 @@ class _HomePageState extends State<HomePage> {
               // BANNER CATÁLOGO
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const CatalogoScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const CatalogoScreen(),
+                    ),
                   );
                 },
                 child: Container(

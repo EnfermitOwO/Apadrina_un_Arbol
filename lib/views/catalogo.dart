@@ -39,44 +39,65 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   }
 
   /// Carga los datos dinámicos desde la colección 'arboles' en MongoDB Atlas
-  Future<void> _cargarArbolesDesdeMongo() async {
-    try {
-      debugPrint("========================================");
-      debugPrint("1. COMENZANDO CONSULTA DE ÁRBOLES...");
-      debugPrint("========================================");
+  
+Future<void> _cargarArbolesDesdeMongo() async {
+  if (!mounted) return;
 
-      final coleccion = MongoService.getCollection('arboles');
+  setState(() {
+    _isLoading = true;
+  });
 
-      debugPrint("2. COLECCIÓN OBTENIDA CORRECTAMENTE");
+  try {
+    debugPrint('========================================');
+    debugPrint('CONECTANDO CON MONGODB...');
+    debugPrint('========================================');
 
-      final resultados = await coleccion.find().toList();
+    // Comprueba la conexión antes de consultar.
+    await MongoService.connect();
 
-      debugPrint("3. ÁRBOLES ENCONTRADOS: ${resultados.length}");
-      debugPrint("4. DATOS RECIBIDOS: $resultados");
+    debugPrint('CONEXIÓN LISTA. CONSULTANDO ÁRBOLES...');
 
-      if (!mounted) return;
+    final coleccion = MongoService.getCollection('arboles');
 
-      setState(() {
-        _allArboles = resultados;
-        _arbolesFiltrados = resultados;
-        _isLoading = false;
-      });
+    final resultados = await coleccion.find().toList();
 
-      debugPrint("5. CATÁLOGO ACTUALIZADO CORRECTAMENTE");
+    debugPrint('ÁRBOLES ENCONTRADOS: ${resultados.length}');
+    debugPrint('DATOS RECIBIDOS: $resultados');
 
-    } catch (e, stackTrace) {
-      debugPrint("========================================");
-      debugPrint("ERROR AL CARGAR CATÁLOGO: $e");
-      debugPrint("DETALLES DEL ERROR: $stackTrace");
-      debugPrint("========================================");
+    if (!mounted) return;
 
-      if (!mounted) return;
+    setState(() {
+      _allArboles = resultados;
+      _arbolesFiltrados = resultados;
+      _isLoading = false;
+    });
 
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    debugPrint('CATÁLOGO ACTUALIZADO CORRECTAMENTE');
+  } catch (e, stackTrace) {
+    debugPrint('========================================');
+    debugPrint('ERROR AL CARGAR CATÁLOGO: $e');
+    debugPrint('DETALLES: $stackTrace');
+    debugPrint('========================================');
+
+    if (!mounted) return;
+
+    setState(() {
+      _allArboles = [];
+      _arbolesFiltrados = [];
+      _isLoading = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No se pudieron cargar los árboles. Revisa tu conexión.',
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
+
 
   // FUNCIÓN PARA FILTRAR ÁRBOLES EN TIEMPO REAL
   void _filtrarArboles(String texto) {
