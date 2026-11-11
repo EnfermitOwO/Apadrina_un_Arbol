@@ -1,11 +1,12 @@
-import 'dart:io';
 
 class Post {
-  final File? image;
+  final String? imageUrl;
   final String comment;
+  final String username;
 
   Post({
-    this.image,
+    this.imageUrl,
     required this.comment,
+    this.username = 'Usuario',
   });
 }

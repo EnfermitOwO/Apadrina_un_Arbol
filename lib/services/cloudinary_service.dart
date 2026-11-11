@@ -1,50 +1,105 @@
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 class CloudinaryService {
-  // Tus credenciales oficiales de Cloudinary
   static const String _cloudName = 'azlao9b7';
   static const String _uploadPreset = 'flutter_app';
 
   static final ImagePicker _picker = ImagePicker();
 
-  /// Abre la galería del dispositivo, selecciona la imagen,
-  /// la sube a Cloudinary y regresa la URL pública lista para guardar en MongoDB.
-  static Future<String?> subirImagenDesdeGaleria({required bool esPerfil}) async {
+  /// Sube una imagen para foto de perfil o portada.
+  static Future<String?> subirImagenDesdeGaleria({
+    required bool esPerfil,
+  }) async {
     try {
-      // 1. Abrir galería del celular
       final XFile? imagen = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: esPerfil ? 500 : 1000,  // Resolución adaptada (perfil más cuadrado/chico, portada más ancha)
+        maxWidth: esPerfil ? 500 : 1000,
         maxHeight: esPerfil ? 500 : 600,
-        imageQuality: 75,                // Compresión óptima para que suba volando
+        imageQuality: 75,
       );
 
-      if (imagen == null) return null; // El usuario canceló
+      if (imagen == null) return null;
 
-      // 2. Preparar petición HTTP POST hacia Cloudinary
-      final url = Uri.parse('https://api.cloudinary.com/v1_1/$_cloudName/image/upload');
-      
+      return await _subirArchivo(
+        archivo: imagen,
+        tipo: 'image',
+      );
+    } catch (e) {
+      print('Excepción al seleccionar imagen: $e');
+      return null;
+    }
+  }
+
+  /// Permite seleccionar una imagen o un video para una publicación.
+  /// Regresa la URL y el tipo de archivo.
+  static Future<Map<String, String>?> subirMultimediaDesdeGaleria() async {
+    try {
+      final XFile? archivo = await _picker.pickMedia();
+
+      if (archivo == null) return null;
+
+      final String extension = archivo.name.split('.').last.toLowerCase();
+
+      const extensionesVideo = [
+        'mp4',
+        'mov',
+        'avi',
+        'mkv',
+        'webm',
+      ];
+
+      final bool esVideo = extensionesVideo.contains(extension);
+      final String tipo = esVideo ? 'video' : 'image';
+
+      final String? url = await _subirArchivo(
+        archivo: archivo,
+        tipo: tipo,
+      );
+
+      if (url == null) return null;
+
+      return {
+        'url': url,
+        'tipo': tipo,
+      };
+    } catch (e) {
+      print('Excepción al subir multimedia: $e');
+      return null;
+    }
+  }
+
+  /// Envía el archivo a Cloudinary.
+  static Future<String?> _subirArchivo({
+    required XFile archivo,
+    required String tipo,
+  }) async {
+    try {
+      final url = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$_cloudName/$tipo/upload',
+      );
+
       final request = http.MultipartRequest('POST', url)
         ..fields['upload_preset'] = _uploadPreset
-        ..files.add(await http.MultipartFile.fromPath('file', imagen.path));
+        ..files.add(
+          await http.MultipartFile.fromPath('file', archivo.path),
+        );
 
-      // 3. Enviar la imagen
       final response = await request.send();
+      final responseData = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
-        final responseData = await response.stream.toBytes();
-        final jsonMap = jsonDecode(String.fromCharCodes(responseData));
-
-        // Regresa la URL web pública de la imagen subida
+        final jsonMap = jsonDecode(responseData);
         return jsonMap['secure_url'] as String?;
-      } else {
-        print('Error en Cloudinary: ${response.statusCode}');
-        return null;
       }
+
+      print('Error en Cloudinary: ${response.statusCode}');
+      print(responseData);
+      return null;
     } catch (e) {
-      print('Excepción al subir imagen: $e');
+      print('Error al subir archivo a Cloudinary: $e');
       return null;
     }
   }
